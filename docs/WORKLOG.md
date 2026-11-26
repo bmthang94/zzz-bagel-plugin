@@ -44,6 +44,18 @@ plugins/zzz_bagel_plugin_bmthang94/   仓库根（github.com/bmthang94/zzz-bagel
    - `tests/` 中的导入已同步改为 `bagel_mac`，全部 79 项单元测试通过。
    - `validate_plugin.py --repo . --strict` 严格校验通过。
 
+## 2026-11-26 PlayCover 画面区域逐屏重新标定
+
+`bagel_mac/screen_info/*.yml` 的 `pc_rect` 按 Windows 16:9 布局标定。PlayCover 窗口约 2:1、被拉伸成 1920x1080，按钮和标题的位置与 Windows 不同，多数偏移在纵向。办法是逐个画面用实机帧跑一遍插件自己的 OCR，按实测文字框加边距重设矩形；没有 PlayCover 实机帧的画面不改。
+
+| 画面 | 状态 | 依据 |
+| --- | --- | --- |
+| 贝果-选图（`bagel_map.yml`） | 已重标：前往备战、选中地图、推荐价值、三个页签；雅努斯、城郊幻境两张地图卡原矩形已能读到，未改 | `docs/materials/screens/playcover_map_select.webp`，`tests/test_map_select_playcover.py` |
+| 贝果计划-主页面（`bagel_hub.yml`） | 标题、前往空洞、仓储枢纽、商店在实机帧上读得到，未改；接待员名称、对话人、出发对话没有实机帧，未核对 | 运行时留存帧（主页面一张，未入库） |
+| 其余（备战、入场确认、仓库、局内、结算、商店、退出确认、拟态提示） | 无 PlayCover 帧，未核对 | — |
+
+已知的 Windows 到 PlayCover 偏移（以矩形中心对文字中心，仅 4 组数据，不能当通用变换）：页面上半部元素上移约 30 至 40 px，下半部元素下移约 37 至 40 px，相当于以 y=540 为中心纵向放大约 1.07 至 1.13 倍；横向偏移各处不一致。
+
 ## 2026-11-26 英文界面（i18n）
 
 插件界面、日志、路线编辑器跟随一条龙语言设置（`ui_language`），新增英文支持；中文与其他语言保持原文。
