@@ -1,5 +1,7 @@
 # 贝果计划
 
+简体中文 | [English](README.en.md)
+
 贝果计划自动跑刀。以插件形式安装，在「应用运行」里单独启动，支持自定义路线。
 
 [觉得插件好用的话，欢迎到 GitHub 点个 Star ⭐↗](https://github.com/Cora093/zzz-bagel-plugin)
@@ -7,13 +9,13 @@
 ## 安装
 
 1. 左侧导航进入「应用运行」，点「添加应用」。
-   ![添加应用](bagel/assets/docs/01-add-app.png)
+   ![添加应用](bagel_mac/assets/docs/01-add-app.png)
 2. 在列表里找到「贝果计划」，选中后点「确定」。
-   ![选择贝果计划](bagel/assets/docs/02-pick-bagel.png)
+   ![选择贝果计划](bagel_mac/assets/docs/02-pick-bagel.png)
 
 ## 设置
 
-![设置界面](bagel/assets/docs/03-settings.png)
+![设置界面](bagel_mac/assets/docs/03-settings.png)
 
 - **累计成功次数**：达到这个次数就结束任务。填 0 表示一直循环，直到仓库满。
 - **连续失败次数**：默认 5，范围 1–10。全局或同一条路线连续失败达到这个次数，程序完成结算后停止并留下现场；填 1 表示首次失败结算后停止。成功入仓后，全局和本局路线的连续失败清零，其他路线的计数保留。空箱局和非支持出生点不改变计数。
@@ -42,7 +44,7 @@
 ### 录一条自己的路线
 
 1. 在应用卡片右上角点「打开路线编辑器」。
-   ![路线编辑器](bagel/assets/docs/04-route-editor.png)
+   ![路线编辑器](bagel_mac/assets/docs/04-route-editor.png)
 2. 点「录制路线」，选好出生点，游戏会自动切到前台。
 3. **站到出生点上，按 `1` 打第一个途径点**。首个点必须落在该出生点的识别半径内，否则这条路线绑不上这个出生点。
 4. 走到下一个位置，按对应数字打点：
@@ -86,9 +88,9 @@
 
 要提交的东西：
 
-1. 路线文件放 `bagel/assets/game_data/bagel/routes/`，文件名必须是 `<route_id>.sample.route.json`（程序会核对文件名与 `route_id` 一致）。
+1. 路线文件放 `bagel_mac/assets/game_data/bagel/routes/`，文件名必须是 `<route_id>.sample.route.json`（程序会核对文件名与 `route_id` 一致）。
 2. 把路线里的 `route_id` 和 `name` 都改成有辨识度的名字，例如 `录像店-速刷`。**不要带 `custom_` 前缀**：那是本地自定义路线的标识格式，带这个前缀的路线，用户点「复制」时会被按自定义标识去校验，中文名对不上会直接报错。
-3. 跑刀路线想在新用户首次使用时开启，就在 `bagel/assets/game_data/bagel/spawn_points.yml` 里给对应出生点填 `initial_route`。开房卡的段在 `bagel/assets/game_data/bagel/keycard_rooms.yml` 的 `initial_room_route`、`initial_entry_routes` 登记，新装或升级后尚未配置的房间会自动开启，规则见[开房卡](docs/keycard.md#默认路线)。不需要自动开启的路线不登记。
+3. 跑刀路线想在新用户首次使用时开启，就在 `bagel_mac/assets/game_data/bagel/spawn_points.yml` 里给对应出生点填 `initial_route`。开房卡的段在 `bagel_mac/assets/game_data/bagel/keycard_rooms.yml` 的 `initial_room_route`、`initial_entry_routes` 登记，新装或升级后尚未配置的房间会自动开启，规则见[开房卡](docs/keycard.md#默认路线)。不需要自动开启的路线不登记。
 
 PR 里请写清楚：用的出生点、走法要点（为什么这么绕）、适合什么练度和角色、大概能开多少箱子。有截图或录屏更好。
 
@@ -96,14 +98,14 @@ PR 里请写清楚：用的出生点、走法要点（为什么这么绕）、�
 
 | 内容 | 位置 |
 | --- | --- |
-| 默认路线（只读，随插件分发） | `plugins/bagel/bagel/assets/game_data/bagel/routes/` |
-| 出生点清单 | `plugins/bagel/bagel/assets/game_data/bagel/spawn_points.yml` |
-| 你复制的自定义路线 | 工作目录 `plugin_data/bagel/routes/custom_*.route.json` |
-| 每个出生点当前开启的路线 | 工作目录 `plugin_data/bagel/route_settings.yml` |
-| 路线数据记录（保留 7 天） | 工作目录 `plugin_data/bagel/route_records.jsonl` |
-| 失败现场截图（保留 3 天，总量不超过 500 MB） | 工作目录 `plugin_data/bagel/screenshots/` |
+| 默认路线（只读，随插件分发） | `bagel_mac/assets/game_data/bagel/routes/` |
+| 出生点清单 | `bagel_mac/assets/game_data/bagel/spawn_points.yml` |
+| 你复制的自定义路线 | 工作目录 `plugin_data/bagel_mac/routes/custom_*.route.json` |
+| 每个出生点当前开启的路线 | 工作目录 `plugin_data/bagel_mac/route_settings.yml` |
+| 路线数据记录（保留 7 天） | 工作目录 `plugin_data/bagel_mac/route_records.jsonl` |
+| 失败现场截图（保留 3 天，总量不超过 500 MB） | 工作目录 `plugin_data/bagel_mac/screenshots/` |
 
-运行期数据都放在工作目录的 `plugin_data/bagel/` 下，跟插件目录分开：插件升级会整个替换插件目录，数据放在里面会被一起删掉，放在外面就不会。默认路线在插件里，随插件分发，只读。
+运行期数据都放在工作目录的 `plugin_data/bagel_mac/` 下，跟插件目录分开：插件升级会整个替换插件目录，数据放在里面会被一起删掉，放在外面就不会。默认路线在插件里，随插件分发，只读。
 
 ## 常见问题
 
@@ -114,7 +116,7 @@ PR 里请写清楚：用的出生点、走法要点（为什么这么绕）、�
 它是只读的。点「复制」，在副本上改。
 
 **换了工作目录，自定义路线不见了**
-自定义路线存在工作目录的 `plugin_data/bagel/routes/` 下，换目录前先把整个 `plugin_data/bagel/` 拷过去。
+自定义路线存在工作目录的 `plugin_data/bagel_mac/routes/` 下，换目录前先把整个 `plugin_data/bagel_mac/` 拷过去。
 
 **跑起来总是卡在墙角**
 这是路线偏保守之外的另一种情况：你的角色移速比录路线时快。把长直路段的途径点拉远一点，或者在拐角前多打一个点。
