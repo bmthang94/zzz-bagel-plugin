@@ -1,6 +1,6 @@
 screen_id: bagel_warehouse
 screen_name: 贝果-仓库
-app_id: bagel
+app_id: bagel_mac
 pc_alt: false
 area_list:
 - area_name: 放入仓库

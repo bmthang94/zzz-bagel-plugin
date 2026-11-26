@@ -1,6 +1,6 @@
 screen_id: bagel_exit_confirm
 screen_name: 贝果-退出确认
-app_id: bagel
+app_id: bagel_mac
 pc_alt: false
 area_list:
 - area_name: 提示

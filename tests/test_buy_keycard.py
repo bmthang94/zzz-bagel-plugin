@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from bagel.operation.buy_keycard import buy_count_for_capacity
-from bagel.operation.pick_keycard import BagelPickKeycard
+from bagel_mac.operation.buy_keycard import buy_count_for_capacity
+from bagel_mac.operation.pick_keycard import BagelPickKeycard
 
 
 @pytest.mark.parametrize(('capacity', 'expected'), [

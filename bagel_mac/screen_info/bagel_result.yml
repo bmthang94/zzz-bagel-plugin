@@ -1,6 +1,6 @@
 screen_id: bagel_result
 screen_name: 贝果-结算
-app_id: bagel
+app_id: bagel_mac
 pc_alt: false
 area_list:
 - area_name: 失败

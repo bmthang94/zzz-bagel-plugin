@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from one_dragon.base.geometry.rectangle import Rect
 
-from bagel.vision.prompt_list import (
+from bagel_mac.vision.prompt_list import (
     PromptFrame,
     PromptRow,
     PromptSelection,

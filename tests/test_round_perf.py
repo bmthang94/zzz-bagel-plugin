@@ -2,8 +2,8 @@
 
 import pytest
 
-from bagel.route import round_perf
-from bagel.route.round_perf import RepeatMerger, RoundPerf
+from bagel_mac.route import round_perf
+from bagel_mac.route.round_perf import RepeatMerger, RoundPerf
 
 
 @pytest.fixture

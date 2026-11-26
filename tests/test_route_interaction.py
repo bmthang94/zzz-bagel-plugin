@@ -9,17 +9,22 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.operation.operation_round_result import OperationRoundResultEnum
 
-from bagel.defs import INTERACT_TAP_SECONDS
-from bagel.operation import container, organize_backpack
-from bagel.operation.container import ContainerRecovery
-from bagel.operation.operation import BagelOperation
-from bagel.operation.organize_backpack import BagelOrganizeBackpack
-from bagel.operation.unlock_safe import BagelUnlockSafe
-from bagel.route import route_walker
-from bagel.route.input_worker import STEP_REST_SECONDS, BagelInputWorker
-from bagel.route.route_model import BEACON, KEYCARD_DOOR, BagelRoute, BagelRoutePoint
-from bagel.route.route_walker import BagelRouteWalker
-from bagel.vision.prompt_list import PromptRow
+from bagel_mac.defs import INTERACT_TAP_SECONDS
+from bagel_mac.operation import container, organize_backpack
+from bagel_mac.operation.container import ContainerRecovery
+from bagel_mac.operation.operation import BagelOperation
+from bagel_mac.operation.organize_backpack import BagelOrganizeBackpack
+from bagel_mac.operation.unlock_safe import BagelUnlockSafe
+from bagel_mac.route import route_walker
+from bagel_mac.route.input_worker import STEP_REST_SECONDS, BagelInputWorker
+from bagel_mac.route.route_model import (
+    BEACON,
+    KEYCARD_DOOR,
+    BagelRoute,
+    BagelRoutePoint,
+)
+from bagel_mac.route.route_walker import BagelRouteWalker
+from bagel_mac.vision.prompt_list import PromptRow
 
 from .prompt_frames import ObservedFrame
 

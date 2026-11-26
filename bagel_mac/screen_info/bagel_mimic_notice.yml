@@ -1,6 +1,6 @@
 screen_id: bagel_mimic_notice
 screen_name: 贝果-拟态单质提示
-app_id: bagel
+app_id: bagel_mac
 pc_alt: false
 area_list:
 - area_name: 标题

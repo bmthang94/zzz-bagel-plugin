@@ -1,6 +1,6 @@
 """路线决策测试的输入：已识别的条目与截图时间，方向和判稳仍由插件计算。"""
 
-from bagel.vision.prompt_list import PromptFrame, PromptRow
+from bagel_mac.vision.prompt_list import PromptFrame, PromptRow
 
 
 class ObservedFrame(PromptFrame):

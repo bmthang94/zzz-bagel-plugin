@@ -29,7 +29,7 @@ from one_dragon.utils import os_utils
 REPO_DIR = Path(__file__).resolve().parents[1]
 """插件仓库根，也是导入根：放进 sys.path 后，插件目录以 ``bagel`` 这个包名被加载。"""
 
-PLUGIN_DIR = REPO_DIR / 'bagel'
+PLUGIN_DIR = REPO_DIR / 'bagel_mac'
 """插件目录：目录名必须等于 plugin.json 里的 id，打包后就是 zip 的顶层目录。"""
 
 MODULE_FILES = sorted(PLUGIN_DIR.rglob('*.py'))
@@ -98,8 +98,8 @@ def test_no_legacy_absolute_imports() -> None:
         for pattern in legacy:
             if pattern in text:
                 offenders.append(f'{path.name}: {pattern}')
-        if re.search(r'^from bagel\.', text, re.MULTILINE):
-            offenders.append(f'{path.name}: 绝对导入 bagel.*')
+        if re.search(r'^from bagel_mac\.', text, re.MULTILINE):
+            offenders.append(f'{path.name}: 绝对导入 bagel_mac.*')
     assert offenders == []
 
 
@@ -115,36 +115,36 @@ def test_modules_importable() -> None:
 
 
 def test_factory_discovered(empty_work_dir: Path) -> None:
-    """插件管理器能发现 bagel，且扫描无失败记录。
+    """插件管理器能发现 bagel_mac，且扫描无失败记录。
 
     用空工作目录：扫描会顺带构造应用配置，不隔离就会写到真实工作目录。
     """
     manager = ApplicationFactoryManager(None, [(REPO_DIR, PluginSource.THIRD_PARTY)])
     factories = manager.discover_factories()
 
-    matched = [factory for factory in factories if factory.app_id == 'bagel']
+    matched = [factory for factory in factories if factory.app_id == 'bagel_mac']
     assert len(matched) == 1
     assert manager.scan_failures == []
 
-    info = manager.get_plugin_info('bagel')
+    info = manager.get_plugin_info('bagel_mac')
     assert info is not None
     assert Path(info.plugin_dir).resolve() == PLUGIN_DIR.resolve()
 
 
 def test_resources_survive_work_dir_change(empty_work_dir: Path) -> None:
     """换一个空工作目录后，出生点、底图、角标、挂锁模板仍然读得到。"""
-    store_module = importlib.import_module('bagel.route.route_store')
+    store_module = importlib.import_module('bagel_mac.route.route_store')
     store = store_module.BagelRouteStore(_StubContext())
     assert store.spawn_path.is_relative_to(PLUGIN_DIR.resolve())
     assert store.load_spawns()
 
-    locator = importlib.import_module('bagel.vision.map_locator')
+    locator = importlib.import_module('bagel_mac.vision.map_locator')
     assert locator.load_map_locators()
 
-    vision = importlib.import_module('bagel.vision.item_vision')
+    vision = importlib.import_module('bagel_mac.vision.item_vision')
     assert Path(vision._badge_dir()).is_relative_to(PLUGIN_DIR.resolve())
 
-    slots = importlib.import_module('bagel.vision.slots')
+    slots = importlib.import_module('bagel_mac.vision.slots')
     assert slots._safe_lock_template() is not None
 
 
@@ -154,7 +154,7 @@ def test_default_routes_inside_plugin(empty_work_dir: Path) -> None:
     这条守首次启动：默认路线若还留在工作目录，用户第一次跑就会得到
     「没有开启的贝果路线」，任务根本开不起来。
     """
-    store_module = importlib.import_module('bagel.route.route_store')
+    store_module = importlib.import_module('bagel_mac.route.route_store')
     store = store_module.BagelRouteStore(_StubContext())
 
     assert store.sample_dir.resolve().is_relative_to(PLUGIN_DIR.resolve())
@@ -189,7 +189,7 @@ def test_store_zip_keeps_resources(tmp_path: Path) -> None:
     service = PluginImportService.__new__(PluginImportService)
 
     previews = service.preview_plugins_from_zip(zip_path)
-    assert [item.plugin_name for item in previews] == ['bagel']
+    assert [item.plugin_name for item in previews] == ['bagel_mac']
     manifest = json.loads((PLUGIN_DIR / 'plugin.json').read_text(encoding='utf-8'))
     assert previews[0].version == manifest['version']
 
@@ -197,7 +197,7 @@ def test_store_zip_keeps_resources(tmp_path: Path) -> None:
         layouts = service._analyze_zip(zf)
 
     assert len(layouts) == 1
-    assert layouts[0].plugin_dir_name == 'bagel'
+    assert layouts[0].plugin_dir_name == 'bagel_mac'
 
     members = {path.as_posix() for _, path in layouts[0].members}
     packed = {

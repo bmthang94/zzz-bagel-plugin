@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from one_dragon.base.operation.operation_round_result import OperationRoundResultEnum
 
-from bagel.defs import INTERACT_TAP_SECONDS
-from bagel.operation import unlock_safe
-from bagel.operation.unlock_safe import BagelUnlockSafe
+from bagel_mac.defs import INTERACT_TAP_SECONDS
+from bagel_mac.operation import unlock_safe
+from bagel_mac.operation.unlock_safe import BagelUnlockSafe
 
 
 @pytest.fixture

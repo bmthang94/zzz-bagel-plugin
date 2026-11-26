@@ -1,6 +1,6 @@
 # Generated from plugin.json. Run scripts/generate_const.py after editing manifest.
-APP_ID = "bagel"
-APP_NAME = "贝果计划"
+APP_ID = "bagel_mac"
+APP_NAME = "贝果计划 (macOS)"
 DEFAULT_GROUP = True
 NEED_NOTIFY = True
 

@@ -5,8 +5,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from bagel.route import input_worker
-from bagel.route.input_worker import STEP_REST_SECONDS, BagelInputWorker
+from bagel_mac.route import input_worker
+from bagel_mac.route.input_worker import STEP_REST_SECONDS, BagelInputWorker
 
 
 class _Keys:
