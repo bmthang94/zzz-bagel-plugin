@@ -129,7 +129,9 @@ class BagelOpenCompendium(BagelOperation):
             if self.open_clicks >= OPEN_CLICK_LIMIT:
                 status = '点击快捷手册按钮后手册未打开'
             else:
-                result = self.round_by_click_area('大世界-普通', '快捷手册')
+                # 点模板实际匹配到的位置：区域矩形按 Windows 界面标定，PlayCover 上区域中心会落在图标之间的空隙。
+                result = self.round_by_find_and_click_area(
+                    self.last_screenshot, '大世界-普通', '快捷手册', pre_delay=0)
                 if result.is_success:
                     self.open_clicks += 1
                     # 手册展开有动画，间隔过短会在动画中再次点到大世界按钮。
