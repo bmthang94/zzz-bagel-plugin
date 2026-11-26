@@ -303,8 +303,8 @@ class BagelOrganizeBackpack(BagelOperation):
         log.info(
             tr('贝果整理背包：%s %s 背包格 %s -> 安全箱格 %s（%s）；目标=%s，蓝图优先=%s%s'),
             choice.mark.quality, choice.mark.item_type, choice.source_index + 1, choice.dest_index + 1,
-            _KIND_LABEL[choice.kind],
-            f'{target.quality} {target.item_type}' if target is not None else '空格',
+            tr(_KIND_LABEL[choice.kind]),
+            f'{target.quality} {target.item_type}' if target is not None else tr('空格'),
             self.blueprint_priority, choice.quantity_note(),
         )
         self._pending_before = self.last_screenshot.copy()

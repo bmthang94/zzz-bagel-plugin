@@ -135,7 +135,7 @@ class BagelUnlockSafe(BagelContainerOperation):
         if self.ring_armed and hit_radius <= radius <= 220:
             self._press_timing()
             self.ring_armed = False
-            return f'{color}圈已发送点按 {self.hits_done}（参考 {SAFE_UNLOCK_HITS}）'
+            return '{v0}圈已发送点按 {v1}（参考 {v2}）'.format(v0=color, v1=self.hits_done, v2=SAFE_UNLOCK_HITS)
         return '等待光圈进入命中范围'
 
     @node_from(from_name='进入大保险解锁', status=STATUS_UNLOCKED)

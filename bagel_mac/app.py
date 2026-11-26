@@ -10,7 +10,7 @@ from one_dragon.utils.log_utils import log
 from zzz_od.application.zzz_application import ZApplication
 
 from . import const, screenshot, stats, usage
-from .i18n import tr, tr_status
+from .i18n import tr, tr_n, tr_name, tr_status
 from .operation.buy_keycard import BagelBuyKeycard, buy_count_for_capacity
 from .operation.deposit import BagelDeposit
 from .operation.enter import BagelEnter
@@ -343,9 +343,11 @@ class BagelApp(ZApplication):
     def _failure_progress(self) -> str:
         """连续失败进度的日志文本；本局跑了路线时带上该路线的计数。"""
         limit = self.config.max_consecutive_failures
-        progress = f'连续失败 {self.consecutive_failures}/{limit}'
+        progress = tr('连续失败 {count}/{limit}').format(count=self.consecutive_failures, limit=limit)
         if self._round_route is not None:
-            progress += f'，路线「{self._round_route.name}」连续失败 {self._round_route_failures()}/{limit}'
+            progress += tr('，路线「{name}」连续失败 {count}/{limit}').format(
+                name=tr_name(self._round_route.name), count=self._round_route_failures(), limit=limit,
+            )
         return progress
 
     def _record_round_income(self, read_hud: bool) -> None:
@@ -402,7 +404,10 @@ class BagelApp(ZApplication):
                     continue
                 ref = catalog.active_ref(spawn.spawn_id)
                 route = catalog.route(ref) if ref is not None else None
-                log.info(tr('贝果出生点 %s：%s'), spawn.name, f'开启「{route.name}」' if route is not None else '未开启路线')
+                log.info(
+                    tr('贝果出生点 %s：%s'), tr_name(spawn.name),
+                    tr('开启「{name}」').format(name=tr_name(route.name)) if route is not None else tr('未开启路线'),
+                )
         usage.log_start(self.config, room_name)
         return self.round_success()
 
@@ -425,7 +430,7 @@ class BagelApp(ZApplication):
             raise ValueError(
                 tr('{room_name}在{room_map}，与所选地图{map_name}不一致，请在设置页重新选择')
                 .format(
-                    room_name=room.name,
+                    room_name=tr_name(room.name),
                     room_map=tr(room.map_id),
                     map_name=tr(self.config.map_name),
                 )
@@ -438,25 +443,27 @@ class BagelApp(ZApplication):
         if room_route is None:
             raise ValueError(
                 tr('{room_name}没有开启房间段，先在路线编辑器里录制并开启')
-                .format(room_name=room.name)
+                .format(room_name=tr_name(room.name))
             )
         spawns = [spawn for spawn in catalog.spawns if selection.entries.get(spawn.spawn_id) is not None]
         if not spawns:
             raise ValueError(
                 tr('没有出生点开启去{room_name}的入口段，先在路线编辑器里录制并开启')
-                .format(room_name=room.name)
+                .format(room_name=tr_name(room.name))
             )
         if self.config.keycard_reserve > 0 and not template_exists(self.config.keycard_template):
             raise ValueError(
                 tr('{room_name}还没有门禁卡图标模板，无法按保留张数清点；把保留张数设为 0 才能启动')
-                .format(room_name=room.name)
+                .format(room_name=tr_name(room.name))
             )
-        log.info(tr('贝果开房卡：房间 %s，房间段「%s」'), room.name, room_route.name)
+        log.info(tr('贝果开房卡：房间 %s，房间段「%s」'), tr_name(room.name), tr_name(room_route.name))
         for spawn in catalog.spawns:
             ref = selection.entries.get(spawn.spawn_id)
             route = catalog.route(ref) if ref is not None else None
-            log.info(tr('贝果出生点 %s：%s'), spawn.name,
-                     f'入口段「{route.name}」' if route is not None else '未开启入口段，退出重开')
+            log.info(
+                tr('贝果出生点 %s：%s'), tr_name(spawn.name),
+                tr('入口段「{name}」').format(name=tr_name(route.name)) if route is not None else tr('未开启入口段，退出重开'),
+            )
         return room.name
 
     @node_from(from_name='检查贝果运行条件')
@@ -567,7 +574,7 @@ class BagelApp(ZApplication):
         elif count < wanted:
             log.info(tr('贝果开房卡：仓库 %s/%s 只剩 %s 格，购买数量从 %s 张降为 %s 张'),
                      capacity[0], capacity[1], capacity[1] - capacity[0], wanted, count)
-        log.info(tr('贝果开房卡：自动购买房卡，目标房间「%s」，购买数量 %s 张'), self._keycard_room_name, count)
+        log.info(tr('贝果开房卡：自动购买房卡，目标房间「%s」，购买数量 %s 张'), tr_name(self._keycard_room_name), count)
         op = BagelBuyKeycard(self.ctx, room_name=self._keycard_room_name, count=count)
         result = op.execute()
         self.screenshot()
@@ -697,7 +704,7 @@ class BagelApp(ZApplication):
             return self.round_fail('{v0}；入仓失败：{v1}'.format(v0=self.STATUS_KEYCARD_MISSING, v1=stored.status), data=stored.data)
         returned = BagelReturn(self.ctx).execute()
         self._record_route(self._stats.finish_round())
-        suffix = '' if returned.success else f'；返回入口失败：{returned.status}'
+        suffix = '' if returned.success else '；返回入口失败：{v0}'.format(v0=returned.status)
         return self.round_fail(
             '{v0}（{v1}），已退出并把安全箱入仓，停止任务。请确认安全箱放的是目标房间的门禁卡{v2}'.format(v0=self.STATUS_KEYCARD_MISSING, v1=detail, v2=suffix),
         )
@@ -792,9 +799,15 @@ class BagelApp(ZApplication):
         if self.config.max_success_rounds > 0 and self.success_rounds >= self.config.max_success_rounds:
             location = {'已返回贝果入口': '贝果入口', '已返回大世界': '大世界'}.get(self.last_return_status)
             if location is not None:
-                log.info(tr('已达到成功次数上限。已成功入仓 %s 局。程序已完成结算检查，并返回%s。本次任务已结束。'), self.success_rounds, location)
+                log.info(
+                    tr_n('已达到成功次数上限。已成功入仓 %s 局。程序已完成结算检查，并返回%s。本次任务已结束。', self.success_rounds),
+                    self.success_rounds, tr(location),
+                )
             else:
-                log.info(tr('已达到成功次数上限。已成功入仓 %s 局。返回结果：%s。本次任务已结束。'), self.success_rounds, tr_status(self.last_return_status or '位置未确认'))
+                log.info(
+                    tr_n('已达到成功次数上限。已成功入仓 %s 局。返回结果：%s。本次任务已结束。', self.success_rounds),
+                    self.success_rounds, tr_status(self.last_return_status or '位置未确认'),
+                )
             return self.round_success('已成功入仓 {v0} 局'.format(v0=self.success_rounds))
         if self.empty_rounds >= 3:
             return self.round_fail('连续 3 局安全箱为空，未计成功，停止自动重开')
@@ -896,9 +909,9 @@ class BagelApp(ZApplication):
         limit = self.config.max_consecutive_failures
         route = self._round_route
         if self.consecutive_failures >= limit:
-            return f'连续失败 {self.consecutive_failures} 局'
+            return '连续失败 {count} 局'.format(count=self.consecutive_failures)
         if route is not None and self._round_route_failures() >= limit:
-            return f'路线「{route.name}」连续失败 {self._round_route_failures()} 局'
+            return '路线「{name}」连续失败 {count} 局'.format(name=route.name, count=self._round_route_failures())
         return None
 
     @node_from(from_name='失败局结算仓库')

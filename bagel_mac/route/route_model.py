@@ -17,7 +17,7 @@ from datetime import datetime
 from math import hypot
 from typing import Any
 
-from ..i18n import tr
+from ..i18n import tr, tr_name
 
 ROUTE_VERSION: int = 2
 """路线文件格式版本。v2 起路线必须绑定出生点，开关状态不再写进路线文件。"""
@@ -104,6 +104,12 @@ KIND_COLORS: dict[str, str] = {
 落在电子橙（约 32 度）与普通箱绿（约 145 度）之间。普通箱子的具体类别
 沿用普通箱的绿色：执行上没有区别，不需要另配颜色。
 """
+
+def kind_display(kind: str) -> str:
+    """点类型的界面显示名（随语言翻译）；未知类型原样返回。"""
+    label = KIND_LABELS.get(kind, kind)
+    return tr(label)
+
 
 POINT_MIN_DISTANCE: float = 8.0
 """同类型点与上一个点的最小间距；原地重复按不产生新点。"""
@@ -562,12 +568,12 @@ def check_route_start(route: BagelRoute, spawn: BagelSpawnPoint) -> str | None:
         )
     if first.layer != spawn.layer:
         return tr('首点分层 {first_layer} 与{spawn_name}分层 {spawn_layer} 不一致').format(
-            first_layer=first.layer, spawn_name=spawn.name, spawn_layer=spawn.layer,
+            first_layer=first.layer, spawn_name=tr_name(spawn.name), spawn_layer=spawn.layer,
         )
     distance = spawn.distance_to(first.x, first.y)
     if distance > spawn.radius:
         return tr('首点距{spawn_name} {distance}px，超出识别半径 {radius}px').format(
-            spawn_name=spawn.name, distance=round(distance), radius=round(spawn.radius),
+            spawn_name=tr_name(spawn.name), distance=round(distance), radius=round(spawn.radius),
         )
     return None
 

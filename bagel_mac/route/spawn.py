@@ -44,9 +44,9 @@ class BagelSpawnMatch:
     def describe(self) -> str:
         """日志用的结论文字。"""
         if self.kind == SPAWN_HIT and self.spawn is not None:
-            return f'出生点 {self.spawn.name}'
+            return '出生点 {name}'.format(name=self.spawn.name)
         if self.kind == SPAWN_AMBIGUOUS:
-            return f'多个出生点同时命中：{"、".join(self.candidates)}'
+            return '多个出生点同时命中：{names}'.format(names='、'.join(self.candidates))
         return '不在任何已登记出生点范围内'
 
 

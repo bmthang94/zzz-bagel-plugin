@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
     from .route_model import BagelRoute
     from .route_store import BagelRouteCatalog
-from ..i18n import tr
+from ..i18n import tr, tr_n, tr_name
 
 RECORD_VERSION: int = 1
 """记录格式版本；字段含义变化时递增。"""
@@ -229,11 +229,17 @@ def _map_lines(map_id: str, records: list[BagelRouteRecord], catalog: BagelRoute
     restarts = [record for record in records if record.outcome == OUTCOME_UNSUPPORTED]
     restart_seconds = _mean([record.seconds for record in restarts]) if restarts else None
     restart_text = (
-        f'直接重开平均 {format_duration(restart_seconds)}（{len(restarts)} 局）'
-        if restart_seconds is not None else '直接重开暂无记录'
+        tr_n('直接重开平均 {time}（{count} 局）', len(restarts)).format(
+            time=format_duration(restart_seconds), count=len(restarts),
+        )
+        if restart_seconds is not None else tr('直接重开暂无记录')
     )
     hourly_text = format_value(None if global_hourly is None else round(global_hourly))
-    lines = [f'{map_id} · 近 {RETENTION_DAYS} 天 {len(records)} 局 · 全局每小时 {hourly_text} · {restart_text}']
+    lines = [
+        tr_n('{map} · 近 {days} 天 {count} 局 · 全局每小时 {hourly} · {restart}', len(records)).format(
+            map=tr(map_id), days=RETENTION_DAYS, count=len(records), hourly=hourly_text, restart=restart_text,
+        )
+    ]
 
     for spawn in catalog.spawns:
         if spawn.map_id != map_id:
@@ -242,7 +248,7 @@ def _map_lines(map_id: str, records: list[BagelRouteRecord], catalog: BagelRoute
         route = catalog.route(ref) if ref is not None else None
         if route is None:
             own = [record for record in restarts if record.spawn_id == spawn.spawn_id]
-            lines.append(f'{spawn.name} · 直接重开 · {_restart_text(own)}')
+            lines.append(tr('{name} · 直接重开 · {text}').format(name=tr_name(spawn.name), text=_restart_text(own)))
             continue
         version = route_version(route)
         rows = [
@@ -250,23 +256,27 @@ def _map_lines(map_id: str, records: list[BagelRouteRecord], catalog: BagelRoute
             if record.spawn_id == spawn.spawn_id and record.route_source == route.source
             and record.route_id == route.route_id and record.route_version == version
         ]
-        head = f'{spawn.name} · {route.name}（{version}）'
+        head = tr('{spawn} · {route}（{version}）').format(
+            spawn=tr_name(spawn.name), route=tr_name(route.name), version=version,
+        )
         if not rows:
-            lines.append(f'{head} · 暂无记录')
+            lines.append(tr('{head} · 暂无记录').format(head=head))
             continue
-        lines.append(f'{head} · {_route_text(rows, restart_seconds, global_hourly)}')
+        lines.append(tr('{head} · {text}').format(head=head, text=_route_text(rows, restart_seconds, global_hourly)))
 
     unregistered = [record for record in restarts if record.spawn_id is None]
     if unregistered:
-        lines.append(f'未登记 · 直接重开 · {_restart_text(unregistered)}')
+        lines.append(tr('未登记 · 直接重开 · {text}').format(text=_restart_text(unregistered)))
     return lines
 
 
 def _restart_text(rows: list[BagelRouteRecord]) -> str:
     """直接重开的局数和平均用时。"""
     if not rows:
-        return '暂无记录'
-    return f'{len(rows)} 局 · 用时 {format_duration(_mean([record.seconds for record in rows]))}'
+        return tr('暂无记录')
+    return tr_n('{count} 局 · 用时 {time}', len(rows)).format(
+        count=len(rows), time=format_duration(_mean([record.seconds for record in rows])),
+    )
 
 
 def _route_text(
@@ -278,16 +288,21 @@ def _route_text(
     """
     known = [record for record in rows if record.income is not None]
     success = sum(1 for record in rows if record.outcome == OUTCOME_SUCCESS)
-    parts = [f'{len(rows)} 局', f'成功率 {success / len(rows):.0%}']
+    parts = [
+        tr_n('{count} 局', len(rows)).format(count=len(rows)),
+        tr('成功率 {rate}').format(rate=f'{success / len(rows):.0%}'),
+    ]
     extra: float | None = None
     if known:
         income = _mean([float(record.income or 0) for record in known])
         seconds = _mean([record.seconds for record in known])
         extra = extra_hourly(income, seconds, restart_seconds)
         parts += [
-            f'每局 {format_value(round(income))}',
-            f'用时 {format_duration(seconds)}',
-            f'额外每小时 {"无法计算" if extra is None else format_value(round(extra))}',
+            tr('每局 {value}').format(value=format_value(round(income))),
+            tr('用时 {time}').format(time=format_duration(seconds)),
+            tr('额外每小时 {value}').format(
+                value=tr('无法计算') if extra is None else format_value(round(extra)),
+            ),
         ]
     if len(known) < MIN_ROUNDS:
         conclusion = CONCLUSION_FEW
@@ -296,5 +311,5 @@ def _route_text(
     else:
         conclusion = CONCLUSION_KEEP if extra > global_hourly else CONCLUSION_DISABLE
     unknown = len(rows) - len(known)
-    note = f'（{unknown} 局未读到）' if unknown else ''
-    return ' · '.join(parts) + f' · {conclusion}{note}'
+    note = tr_n('（{count} 局未读到）', unknown).format(count=unknown) if unknown else ''
+    return ' · '.join(parts) + f' · {tr(conclusion)}{note}'

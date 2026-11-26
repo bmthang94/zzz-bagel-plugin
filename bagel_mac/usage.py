@@ -13,7 +13,7 @@ from .defs import (
     CLEAN_TYPES,
     DIFFICULTY_HAZARD,
 )
-from .i18n import tr
+from .i18n import tr, tr_name
 
 if TYPE_CHECKING:
     from .config import BagelConfig
@@ -185,12 +185,12 @@ def log_start(config: BagelConfig, room_name: str | None = None) -> None:
         config: 本次任务的配置。
         room_name: 开房卡模式的房间显示名称；跑刀为 None。
     """
-    limit = str(config.max_success_rounds) if config.max_success_rounds else '不限'
+    limit = str(config.max_success_rounds) if config.max_success_rounds else tr('不限')
     if config.is_keycard:
         log.info(
             tr('开房卡模式：即将进入城郊幻境%s，开「%s」。成功次数上限：%s。连续失败上限：%s。'
             '成功指刷开房卡门且有物资入仓。'),
-            config.run_difficulty, room_name or config.keycard_room, limit, config.max_consecutive_failures,
+            config.run_difficulty, tr_name(room_name or config.keycard_room), limit, config.max_consecutive_failures,
         )
         if config.auto_buy_keycard:
             log.info(tr('自动购买房卡：开启，缺卡时自动前往常驻商店购买 %s 张（上限 30 张）。'), config.buy_keycard_count)

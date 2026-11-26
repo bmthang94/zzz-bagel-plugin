@@ -312,7 +312,7 @@ class BagelStoreSafe(BagelOperation):
                 self.NO_PROGRESS_SECONDS, self._search_progress.summary(),
             )
             self._clear_pending()
-            return self.round_recoverable_fail(f'搜查连续{self.NO_PROGRESS_SECONDS:.0f}秒无确认进展')
+            return self.round_recoverable_fail('搜查连续{v0}秒无确认进展'.format(v0=f'{self.NO_PROGRESS_SECONDS:.0f}'))
         return None
 
     def _finish_collection(self, status: str) -> OperationRoundResult:
@@ -366,12 +366,14 @@ class BagelStoreSafe(BagelOperation):
             if previous.get(index) == (kind, quality):
                 continue
             before = previous.get(index)
-            change = f'（原种类={before[0]}，品质={before[1]}）' if before else ''
-            details.append(f'格 {index + 1}：种类={kind}，品质={quality}{change}')
+            change = tr('（原种类={kind}，品质={quality}）').format(kind=before[0], quality=before[1]) if before else ''
+            details.append(tr('格 {n}：种类={kind}，品质={quality}{change}').format(
+                n=index + 1, kind=kind, quality=quality, change=change,
+            ))
         for index in sorted(previous.keys() - current.keys()):
-            details.append(f'格 {index + 1}：不再进入本轮物品识别')
+            details.append(tr('格 {n}：不再进入本轮物品识别').format(n=index + 1))
         self._logged_items[area] = items
-        log.info(tr('贝果物品识别：%s，当前 %s 格；%s'), area, len(items), '；'.join(details) or '无已识别物品')
+        log.info(tr('贝果物品识别：%s，当前 %s 格；%s'), area, len(items), '；'.join(details) or tr('无已识别物品'))
 
     def _ready_results(self, results: list[BagelSlotMark]) -> list[BagelSlotMark]:
         """确认结果格类型，金币记为已跳过，其他物品交给原优先级选择。"""
@@ -464,12 +466,12 @@ class BagelStoreSafe(BagelOperation):
         self._left_grid_waited = False
         previous_item = next((mark for mark in safes if mark.index == choice.dest_index), None)
         destination_item = (
-            f'{previous_item.quality} {previous_item.item_type}' if previous_item is not None else '空格'
+            f'{previous_item.quality} {previous_item.item_type}' if previous_item is not None else tr('空格')
         )
         log.info(
             tr('贝果入箱：%s %s 结果格 %s %s -> %s格 %s %s；选择时目标=%s，蓝图优先=%s%s'),
             choice.mark.quality, choice.mark.item_type, choice.source_index + 1, source.tuple(),
-            _DEST_LABEL[choice.kind], choice.dest_index + 1, destination.tuple(),
+            tr(_DEST_LABEL[choice.kind]), choice.dest_index + 1, destination.tuple(),
             destination_item, self.blueprint_priority, choice.quantity_note(),
         )
         if self.ledger is not None:
@@ -543,7 +545,7 @@ class BagelStoreSafe(BagelOperation):
         self._consecutive_failures += 1
         if self._consecutive_failures >= self.CONSECUTIVE_FAILURE_LIMIT:
             return self._give_up(
-                f'连续 {self._consecutive_failures} 件物品搬不动（{reason}），退出本局重开',
+                '连续 {v0} 件物品搬不动（{v1}），退出本局重开'.format(v0=self._consecutive_failures, v1=reason),
             )
         return None
 
@@ -647,7 +649,7 @@ class BagelStoreSafe(BagelOperation):
             # 剩下的物品，而不是停掉整局。
             return self._skip_and_reselect(
                 source_index,
-                f'首次拖拽和 {self.DRAG_REPEAT_LIMIT} 次重拖后源格仍未入箱',
+                '首次拖拽和 {v0} 次重拖后源格仍未入箱'.format(v0=self.DRAG_REPEAT_LIMIT),
             )
         if kind == ACTION_FILL and dest_now and not slot_occupied(before, destination):
             # 面板已通过稳定检查，目标格由空变有即可确认填空成功。

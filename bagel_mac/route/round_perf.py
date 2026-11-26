@@ -7,6 +7,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from time import perf_counter
 
+from ..i18n import tr
+
 REPEAT_FLUSH_SECONDS: float = 1.0
 """同一条决策连续重复时，最多隔这么久（秒）打一次汇总并重打一条完整行。
 
@@ -66,12 +68,12 @@ class RoundPerf:
         """一行文字：总耗时和各段毫秒数，出现多次的段带次数。"""
         total = self.total()
         parts = [
-            f'{name}×{self.counts[name]} {seconds * 1000:.0f}' if self.counts[name] > 1
-            else f'{name} {seconds * 1000:.0f}'
+            f'{tr(name)}×{self.counts[name]} {seconds * 1000:.0f}' if self.counts[name] > 1
+            else f'{tr(name)} {seconds * 1000:.0f}'
             for name, seconds in self.parts.items()
         ]
-        parts.append(f'其他 {(total - sum(self.parts.values())) * 1000:.0f}')
-        return f'用时 {total * 1000:.0f}ms（{" ".join(parts)}）'
+        parts.append(tr('其他 {ms}').format(ms=f'{(total - sum(self.parts.values())) * 1000:.0f}'))
+        return tr('用时 {total}ms（{parts}）').format(total=f'{total * 1000:.0f}', parts=' '.join(parts))
 
 
 class RepeatMerger:
@@ -126,11 +128,13 @@ class RepeatMerger:
             return []
         rounds = self.count
         totals = self.totals
-        parts = ' '.join(f'{name} {seconds / rounds * 1000:.0f}' for name, seconds in self.parts.items())
-        line = (
-            f'↑ 同上 {rounds} 轮 {perf_counter() - self.first_at:.2f}s · 最后：{self.last_text} · '
-            f'用时中位 {statistics.median(totals) * 1000:.0f}ms 最大 {max(totals) * 1000:.0f}ms'
-            f'（各段平均 {parts}）'
+        parts = ' '.join(f'{tr(name)} {seconds / rounds * 1000:.0f}' for name, seconds in self.parts.items())
+        line = tr(
+            '↑ 同上 {rounds} 轮 {seconds}s · 最后：{last} · '
+            '用时中位 {median}ms 最大 {peak}ms（各段平均 {parts}）'
+        ).format(
+            rounds=rounds, seconds=f'{perf_counter() - self.first_at:.2f}', last=self.last_text,
+            median=f'{statistics.median(totals) * 1000:.0f}', peak=f'{max(totals) * 1000:.0f}', parts=parts,
         )
         self.key = None
         self.count = 0

@@ -34,8 +34,17 @@
 
 - 翻译入口在 `bagel_mac/i18n.py`：
   - `tr('中文原文')`：普通显示文本。
-  - `tr_status(text)`：只用于显示状态文本（停止原因、试跑 HUD 状态、日志里的
-    `result.status` 参数）；先精确匹配词典，再按 `{占位符}` 模板匹配，匹配到的值原样填入。
+  - `tr_status(text)`：只用于显示状态文本（停止原因、试跑 HUD 状态、悬浮窗节点名、日志里的
+    `result.status` 参数）；先精确匹配词典，再按 `{占位符}` 模板匹配（字面文字多的模板优先），
+    抓到的值按占位符名处理：`{name}` / `{spawn_name}` / `{room_name}` / `{route_name}` 走 `tr_name`，
+    `{names}`（用「、」连起来的名字）逐个 `tr_name`，其余含中文的值递归 `tr_status`
+    （所以 `'入箱失败：{v0}'` 里嵌的子状态也会被翻译）。带格式说明的键（`{v0:.0f}`）按已格式化好的文本填入。
+  - `tr_n('复数原文', n)`：带数量的文字。英文且 `n == 1` 时先查词典键 `原文|one`，
+    没有就回退 `tr()`；中文不变。网页里是 `tn('原文', n)`。只在英文需要单数时才加 `|one` 条目，
+    占位符与基础键一致。
+  - `tr_name(名字)`：出生点、房间、内置路线名这类**数据名字**的显示翻译。先整串精确匹配，
+    否则按 `-`、`_`、` + ` 拆开逐段查词典再按原分隔符拼回，查不到的段原样保留（用户自起的名字不变）。
+    网页里是 `tName()`。只用于渲染；比较、查找、查重、保存、新建路线的默认名一律用原名。
   - `web_bootstrap_script()`：把整份词典序列化后注入路线编辑器网页
     （`web/index.html` 的 `<!--BAGEL_I18N-->` 占位符，页面里的 `t()`/`fmt()` 与
     `data-i18n*` 属性消费它）。
@@ -47,6 +56,10 @@
 - 只在显示时翻译。配置值、路线数据、节点名、`op_name`、`round_*` 返回值、
   `@node_from(status=...)`、`STATUS_*`/`OUTCOME_*` 常量、OCR 目标
   （`gt(..., 'game')`）、用户起的路线名与房间名，一律保持中文原文。
+- 状态文本（传给 `round_*` 与各操作里转发状态的小方法，如 `transfer_fail`、`_fail`、`_blocked`）里
+  不能写含中文的 f-string：写成 `'模板 {v0}'.format(v0=...)`，并在 `en.yml` 登记同样的模板。
+  新增转发状态的小方法时，把它登记到 `tests/test_i18n.py` 的 `STATUS_HELPERS`。
+- 点类型显示名用 `route_model.kind_display(kind)`，不要在调用处写 `tr(KIND_LABELS.get(...))`。
 - `tr()` 的参数必须是字面量或常量引用：不能用 f-string，也不能传表达式。
   带值的文本写成 `tr('……{name}……').format(name=…)`；日志保留懒加载参数
   `log.info(tr('……%s'), a)`；作为日志参数的状态值用 `tr_status(status)`。
@@ -67,6 +80,21 @@
 3. 测试现状：`tests/test_i18n.py` 只加载 `en.yml` 做结构与覆盖校验，新语言的词典
    目前不受测试约束；要纳入校验需把 `load_catalog` 相关测试按语言参数化。
 
+### 名字与地名
+
+出生点、房间、内置路线名保持中文（文件、配置、查重都用原名），显示时 `tr_name` 翻译。词典里各部分：
+
+- 官方：录像店 → Random Play（游戏物品文本 “Six Dusk Street - Random Play …”）、风蚀公路 → Windworn Highway、
+  巴哈姆特仓库 → Bahamut Warehouse、野人镇 / 无力野人镇 → Bunless Bae Town、风蚀公路汽车旅馆二层 →
+  Windworn Highway Motel, 2F（物品名）。
+- 取自官方物品描述的片段：仓储中心二层板房 → Storage Center 2F Prefab Building
+  （描述 “Bunless Bae Town - Storage Center - Prefab Building 2nd Floor”）。
+- 未核实（字面直译或社区叫法）：六昏街南站、白鸽工地站、改建工程区、工地深处、汽车旅馆、芝邦邦餐厅
+  （社区叫 Cheezburg Bistro）及各房间入口名。
+- 后缀：默认 Default、非高危 Non-High-Risk、入口段 Entry Segment、房间段 Room Segment、低/高 Low/High、
+  北/东/西 North/East/West；网页新建路线拼的默认名后缀：自定义 Custom、录制 Recorded、房间段录制
+  Room Segment Recording、副本 Copy。
+
 ### 术语表
 
 官方英文名（与英文客户端一致）：Operation Bagel、Janus Illusion、Suburbs Illusion、
@@ -86,7 +114,18 @@ base map（底版）、spawn point（出生点）、`Bagel-<动作>` 式的操�
 - 扫描约束：`tr()` 首参只能是字面量/常量引用；每个 `tr()`/`t()`/`data-i18n*`
   字面量必须有词典条目；没有未被引用的条目；占位符两侧一致；译文不含键外的
   中文（用户数据透传除外）。
-- 日志守卫：`log.*`/`print` 首参出现裸中文即违规（全插件）。
+- 日志守卫：`log.*`/`print` 首参出现裸中文即违规（全插件）；`log.x(tr('…%s…'), …)` 的占位符个数要等于参数个数；
+  `tr(...)` 的返回值只能接 `.format` / `.join`（挡住 `log.info(tr('…').name)` 这类笔误）。
+- 中文字符串守卫（`tests/test_zh_strings.py`）：用 AST 扫描 `bagel_mac/**/*.py` 的每个含中文的字符串常量
+  （含 f-string 各段）。文档字符串、`tr/tr_n/tr_name/tr_status/gt` 的首参、装饰器参数、`round_*` 参数、
+  `STATUS_*`/`OUTCOME_*` 常量、本身是词典键的字符串不算违规；其余必须翻译，或登记到
+  `tests/zh_internal_strings.json`（按 `data_key` / `ocr_target` / `config_value` / `status_match` /
+  `game_text_table` / `regex_pattern` 分组，写明每条为什么是内部字符串）。登记项已不存在或已是词典键时测试会红。
+- 名字守卫：内置出生点、房间、房间入口与内置路线名按 `tr_name` 拆出的每一段都要有词典条目；
+  网页里每个 `<对象>.name` 渲染处都要包 `tName()`，只有比较、查重、新路线默认名、可编辑输入框这几类原名用途
+  登记在 `HTML_RAW_NAME_ALLOWED`。
+- 复数守卫：`|one` 条目必须有基础键、占位符与基础键一致，且基础键要经 `tr_n` / `tn` 取用。
+- 模板守卫：每个带占位符的词典键都能被 `tr_status` 渲染（不抛错、不残留花括号）。
 - 状态守卫：`round_*` 参数与 `STATUS_*`/`OUTCOME_*` 常量必须有词典条目
   （`NEVER_DISPLAYED_STATUSES` 可登记永不显示的例外，当前为空）。
 - `tr_status`：精确、单/双占位符模板、未收录透传、zh 原样。

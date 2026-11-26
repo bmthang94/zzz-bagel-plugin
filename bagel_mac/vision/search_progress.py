@@ -131,13 +131,13 @@ class BagelSearchProgress:
         pending = set(self.pending)
         for index, state in enumerate(self.states):
             if index in self.handled:
-                detail = self.handled[index]
+                detail = tr(self.handled[index])
             elif index in self.confirmed and index not in pending:
                 kind, quality = self.confirmed[index]
-                detail = f'已确认({quality} {kind})'
+                detail = tr('已确认({quality} {kind})').format(quality=quality, kind=kind)
             elif index in pending:
-                detail = f'待确认({state or "未知"})'
+                detail = tr('待确认({state})').format(state=state or tr('未知'))
             else:
-                detail = '空'
+                detail = tr('空')
             slots.append(f'{index + 1}={detail}')
-        return '；'.join(slots) or '尚未登记'
+        return '；'.join(slots) or tr('尚未登记')

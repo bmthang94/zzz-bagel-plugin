@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 
 from one_dragon.utils.log_utils import log
 
-from .i18n import tr, tr_status
+from .i18n import tr, tr_n, tr_status
 from .vision.item_vision import TYPE_RANK
 
 OUTCOME_SUCCESS: str = '成功入仓'
@@ -45,7 +45,7 @@ def parse_value(text: str) -> int | None:
 def format_value(value: int | None) -> str:
     """按游戏习惯缩写成 K / M，未知时显示「未读到」。"""
     if value is None:
-        return '未读到'
+        return tr('未读到')
     if value >= 1_000_000:
         return f'{value / 1_000_000:.2f}M'
     if value >= 1_000:
@@ -262,7 +262,7 @@ class BagelRunStats:
         log.info(tr('贝果收益统计：红色物品：%s'), format_red(self.red_totals))
         if self.sale_count:
             log.info(tr('贝果出售统计：出售 %s 次，共 %s 齿轮硬币%s'), self.sale_count, self.sale_coins,
-                     f'（{self.sale_unknown} 次未读到）' if self.sale_unknown else '')
+                     tr('（{count} 次未读到）').format(count=self.sale_unknown) if self.sale_unknown else '')
 
     def summary(self, stop_reason: str | None) -> str | None:
         """推送用的短摘要；一局都没结束时为 None。
@@ -316,7 +316,7 @@ class BagelRunStats:
             )
         if self.income_unknown_rounds:
             notes.append(
-                tr('{count} 局未读到，未计入').format(count=self.income_unknown_rounds)
+                tr_n('{count} 局未读到，未计入', self.income_unknown_rounds).format(count=self.income_unknown_rounds)
             )
         suffix = (
             tr('（{notes}）').format(notes=tr('；').join(notes)) if notes else ''

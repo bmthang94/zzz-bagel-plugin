@@ -27,7 +27,7 @@ import yaml
 from one_dragon.utils.log_utils import log
 
 from ..defs import PLUGIN_DIR, get_plugin_data_dir
-from ..i18n import tr
+from ..i18n import tr, tr_name
 from .route_model import (
     SEGMENT_ENTRY,
     SEGMENT_ROOM,
@@ -178,7 +178,7 @@ class BagelRouteCatalog:
         room = self.room(route.keycard.room_id)
         if room is None:
             return tr('「{route_name}」所属房间 {room_id} 未登记').format(
-                route_name=route.name, room_id=route.keycard.room_id,
+                route_name=tr_name(route.name), room_id=route.keycard.room_id,
             )
         if route.keycard.segment == SEGMENT_ROOM:
             problem = check_room_segment(route, room)
@@ -186,10 +186,10 @@ class BagelRouteCatalog:
             spawn = self.spawn(route.spawn_id)
             if spawn is None:
                 return tr('「{route_name}」绑定的出生点 {spawn_id} 未登记').format(
-                route_name=route.name, spawn_id=route.spawn_id,
+                route_name=tr_name(route.name), spawn_id=route.spawn_id,
             )
             problem = check_route_start(route, spawn) or check_entry_segment(route, room)
-        return None if problem is None else f'「{route.name}」{problem}'
+        return None if problem is None else tr('「{route_name}」{problem}').format(route_name=tr_name(route.name), problem=problem)
 
     def keycard_problem(self, room_id: str) -> str | None:
         """检查某个房间的开房卡开启选择能否执行。
@@ -211,26 +211,26 @@ class BagelRouteCatalog:
             if route is None:
                 problems.append(
                     tr('{room_name}开启的路线 {ref} 不存在或已损坏').format(
-                        room_name=room.name, ref=ref,
+                        room_name=tr_name(room.name), ref=ref,
                     )
                 )
                 continue
             if route.keycard is None or route.keycard.room_id != room_id or route.keycard.segment != segment:
                 problems.append(
                     tr('「{route_name}」不是{room_name}的{segment_label}').format(
-                        route_name=route.name, room_name=room.name,
+                        route_name=tr_name(route.name), room_name=tr_name(room.name),
                         segment_label=tr('房间段') if segment == SEGMENT_ROOM else tr('入口段'),
                     )
                 )
                 continue
             if segment == SEGMENT_ENTRY and route.spawn_id != spawn_id:
-                problems.append(tr('「{route_name}」绑定的出生点与开启位置不一致').format(route_name=route.name))
+                problems.append(tr('「{route_name}」绑定的出生点与开启位置不一致').format(route_name=tr_name(route.name)))
                 continue
             problem = self.segment_problem(route)
             if problem is not None:
                 problems.append(problem)
         if selection.room is None and any(ref is not None for ref in selection.entries.values()):
-            problems.append(tr('{room_name}开启了入口段，但没有开启房间段').format(room_name=room.name))
+            problems.append(tr('{room_name}开启了入口段，但没有开启房间段').format(room_name=tr_name(room.name)))
         return tr('；').join(problems) if problems else None
 
     def selection_problem(self, spawn_id: str) -> str | None:
@@ -248,16 +248,16 @@ class BagelRouteCatalog:
         route = self.route(ref)
         if route is None:
             return tr('{spawn_name}开启的路线 {ref} 不存在或已损坏').format(
-            spawn_name=spawn.name, ref=ref,
+            spawn_name=tr_name(spawn.name), ref=ref,
         )
         if route.spawn_id != spawn_id:
             return tr('{spawn_name}开启的路线「{route_name}」绑定的是其他出生点').format(
-            spawn_name=spawn.name, route_name=route.name,
+            spawn_name=tr_name(spawn.name), route_name=tr_name(route.name),
         )
         problem = check_route_start(route, spawn) or check_run_points(route)
         if problem is not None:
             return tr('{spawn_name}开启的路线「{route_name}」无法开始：{problem}').format(
-            spawn_name=spawn.name, route_name=route.name, problem=problem,
+            spawn_name=tr_name(spawn.name), route_name=tr_name(route.name), problem=problem,
         )
         return None
 
@@ -507,7 +507,7 @@ class BagelRouteStore:
             room = catalog.room(room_id)
             raise BagelRouteConfigError(
                 tr('{room_name}没有开启房间段，入口段无法单独试跑').format(
-                    room_name=room.name if room else room_id,
+                    room_name=tr_name(room.name) if room else room_id,
                 )
             )
         problem = catalog.segment_problem(room_route)
@@ -533,18 +533,18 @@ class BagelRouteStore:
             if route.keycard is not None:
                 raise BagelRouteConfigError(
                 tr('「{route_name}」是开房卡{segment_label}，不能作为跑刀路线开启').format(
-                    route_name=route.name, segment_label=tr(route.keycard.label),
+                    route_name=tr_name(route.name), segment_label=tr(route.keycard.label),
                 )
             )
             if route.spawn_id != spawn_id:
                 raise BagelRouteConfigError(
-                tr('路线「{route_name}」绑定的是其他出生点').format(route_name=route.name)
+                tr('路线「{route_name}」绑定的是其他出生点').format(route_name=tr_name(route.name))
             )
             problem = check_route_start(route, catalog.spawn(spawn_id)) or check_run_points(route)
             if problem is not None:
                 raise BagelRouteConfigError(
                 tr('路线「{route_name}」无法开启：{problem}').format(
-                    route_name=route.name, problem=problem,
+                    route_name=tr_name(route.name), problem=problem,
                 )
             )
         catalog.active[spawn_id] = ref
@@ -576,12 +576,12 @@ class BagelRouteStore:
             if route.keycard is None or route.keycard.room_id != room_id or route.keycard.segment != segment:
                 raise BagelRouteConfigError(
                 tr('「{route_name}」不是{room_name}的{label}').format(
-                    route_name=route.name, room_name=room.name, label=label,
+                    route_name=tr_name(route.name), room_name=tr_name(room.name), label=label,
                 )
             )
             if spawn_id is not None and route.spawn_id != spawn_id:
                 raise BagelRouteConfigError(
-                tr('入口段「{route_name}」绑定的是其他出生点').format(route_name=route.name)
+                tr('入口段「{route_name}」绑定的是其他出生点').format(route_name=tr_name(route.name))
             )
             problem = catalog.segment_problem(route)
             if problem is not None:
@@ -656,7 +656,7 @@ class BagelRouteStore:
                         keycard.room_id, None if keycard.segment == SEGMENT_ROOM else spawn_id, route.ref,
                     )
                 except BagelRouteConfigError as error:
-                    log.warning(tr('贝果开房卡%s「%s」已保存，但未开启：%s'), keycard.label, route.name, error)
+                    log.warning(tr('贝果开房卡%s「%s」已保存，但未开启：%s'), tr(keycard.label), tr_name(route.name), error)
         return route
 
     def copy_route(self, ref: BagelRouteRef, name: str) -> BagelRoute:

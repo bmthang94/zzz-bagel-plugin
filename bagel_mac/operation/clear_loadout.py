@@ -116,10 +116,10 @@ class BagelClearLoadout(BagelTransferOperation):
         if result is not None:
             return result
         values = read_containers(self.ctx, self.last_screenshot)
-        self.observation = f'容器读数 {values}'
+        self.observation = '容器读数 {v0}'.format(v0=values)
         if not complete_containers(values):
             self._stable_image = None
-            return self.read_again(f'容器读数不完整 {values}')
+            return self.read_again('容器读数不完整 {v0}'.format(v0=values))
         states = [carried_slot_state(self.last_screenshot, center) for center in LOADOUT_CENTERS]
         if None in states:
             self._stable_image = None
@@ -177,7 +177,7 @@ class BagelClearLoadout(BagelTransferOperation):
         used, capacity = result.data['warehouse']
         if capacity - used < self.required_slots:
             self.screenshot()
-            return self.transfer_fail(f'仓库空位不足 {used}/{capacity}，尚有 {self.required_slots} 格装备待卸')
+            return self.transfer_fail('仓库空位不足 {v0}/{v1}，尚有 {v2} 格装备待卸'.format(v0=used, v1=capacity, v2=self.required_slots))
         return self.round_success()
 
     @node_from(from_name='转存背包安全箱')
@@ -209,7 +209,7 @@ class BagelClearLoadout(BagelTransferOperation):
             return result
         texts = {name: read_area(self.ctx, self.last_screenshot, '贝果-备战', name)
                  for name in ('背包数量', '安全箱数量')}
-        self.observation = f'容器读数 {texts}'
+        self.observation = '容器读数 {v0}'.format(v0=texts)
         backpack = parse_capacity_pair(texts['背包数量'])
         safe = parse_capacity_pair(texts['安全箱数量'])
         if backpack is None or safe is None:
@@ -222,7 +222,7 @@ class BagelClearLoadout(BagelTransferOperation):
             return self._wait_unload('容器零占用读数不明确', unknown=True)
         counts = (backpack, safe)
         states = tuple(carried_slot_state(self.last_screenshot, center) for center in LOADOUT_CENTERS)
-        self.observation += f'，槽位占用 {states}'
+        self.observation = '容器读数 {v0}，槽位占用 {v1}'.format(v0=texts, v1=states)
         if None in states:
             self._stable_image = None
             return self._wait_unload('卸装槽位状态不清', unknown=True)
@@ -246,14 +246,15 @@ class BagelClearLoadout(BagelTransferOperation):
                     self.detail_close_attempts = 0
                     label = self.source_label.split('（重试', 1)[0]
                     return self.double_click_item(
-                        self.pending_center, f'{label}（重试 {self.unload_retries}/{MAX_UNLOAD_RETRIES}）',
+                        self.pending_center,
+                        '{v0}（重试 {v1}/{v2}）'.format(v0=label, v1=self.unload_retries, v2=MAX_UNLOAD_RETRIES),
                     )
                 return result
             before_backpack, before_safe = self.before_counts
             backpack_valid = (backpack[1] <= before_backpack[1] if pending_index == BACKPACK_SLOT_INDEX
                               else backpack == before_backpack)
             if safe != before_safe or not backpack_valid:
-                return self.transfer_fail(f'卸装后容器容量变化异常 {self.before_counts} -> {counts}')
+                return self.transfer_fail('卸装后容器容量变化异常 {v0} -> {v1}'.format(v0=self.before_counts, v1=counts))
             self.finish_transfer()
         if not any(states):
             return self.round_success('战备已全部清空', data={'moved': self.moved})
@@ -267,6 +268,6 @@ class BagelClearLoadout(BagelTransferOperation):
                     self.unload_retries = 0
                     self.unload_generation = self.pause_generation
                     self.detail_close_attempts = 0
-                    return self.double_click_item(center, f'{group}第 {index + 1} 格')
+                    return self.double_click_item(center, '{v0}第 {v1} 格'.format(v0=group, v1=index + 1))
             offset += len(centers)
         return self.transfer_fail('未找到可卸下的物品')

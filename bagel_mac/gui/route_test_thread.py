@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 from one_dragon.utils.log_utils import log
 from PySide6.QtCore import QThread, Signal
 
-from ..i18n import tr, tr_status
+from ..i18n import tr, tr_n, tr_name, tr_status
 from ..route.route_model import BagelRouteRef
 from ..route.route_recorder import GAME_FOREGROUND_TIMEOUT, wait_foreground
 from ..route.route_walker import BagelRouteWalker
@@ -99,7 +99,7 @@ class BagelRouteTestThread(QThread):
             return
         if result.success:
             points = len(self._walker.routes[0].points) if self._walker and self._walker.routes else 0
-            self.done.emit(True, tr('试跑完成，{points} 点走完：{status}').format(points=points, status=tr_status(result.status)))
+            self.done.emit(True, tr_n('试跑完成，{points} 点走完：{status}', points).format(points=points, status=tr_status(result.status)))
             return
         detail = f'：{result.data}' if isinstance(result.data, str) and result.data else ''
         self.done.emit(False, tr('试跑失败：{status}{detail}').format(status=tr_status(result.status), detail=detail))
@@ -203,11 +203,11 @@ def decision_lines(snapshot: dict[str, object]) -> list[str]:
     # 决策文字是「节点 · 状态」，状态里也可能带「·」，只按第一个拆成两行。
     node, _, status = str(snapshot.get('decision') or tr('准备中')).partition(' · ')
     lines = [
-        tr('节点 {node}').format(node=node),
+        tr('节点 {node}').format(node=tr_status(node)),
         tr('状态 {status}').format(status=tr_status(status) if status else '—'),
     ]
     lines.append(
-        tr('路线 {name} · {cursor}/{total}').format(name=route_name, cursor=cursor, total=total)
+        tr('路线 {name} · {cursor}/{total}').format(name=tr_name(route_name), cursor=cursor, total=total)
         if route_name else tr('路线 识别出生点中')
     )
     distance = snapshot.get('distance')

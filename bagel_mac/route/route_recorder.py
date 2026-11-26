@@ -29,12 +29,12 @@ from ..vision.map_locator import MultiMapLocator, load_map_locators
 from ..vision.minimap_angle import analyze
 from .route_model import (
     BEACON,
-    KIND_LABELS,
     POINT_KINDS,
     BagelKeycardTag,
     BagelRoute,
     BagelRoutePoint,
     BagelSpawnPoint,
+    kind_display,
     now_iso,
 )
 from .route_store import (
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from cv2.typing import MatLike
     from one_dragon.base.geometry.rectangle import Rect
     from zzz_od.context.zzz_context import ZContext
-from ..i18n import tr
+from ..i18n import tr, tr_n, tr_name
 
 MINIMAP_AREA = ('贝果-局内', '定位小地图')
 """小地图裁剪区域，与导航共用同一份建档。"""
@@ -185,43 +185,43 @@ class BagelPointRecorder:
         """持续定位，按数字键打点、按退格删掉上一个点。"""
         controller = self.ctx.controller
         if controller is None or not controller.init_game_win():
-            self.failure = '游戏窗口未就绪，请先启动游戏'
+            self.failure = tr('游戏窗口未就绪，请先启动游戏')
             return
         game_win = controller.game_win
         hwnd = game_win.get_hwnd()
         if hwnd is None or not controller.is_game_window_ready:
-            self.failure = '未找到游戏窗口，请先启动游戏'
+            self.failure = tr('未找到游戏窗口，请先启动游戏')
             return
         area = self.ctx.screen_loader.get_area(*MINIMAP_AREA)
         if area is None:
-            self.failure = f'缺少画面区域：{MINIMAP_AREA[0]}/{MINIMAP_AREA[1]}'
+            self.failure = tr('缺少画面区域：{area}').format(area=f'{MINIMAP_AREA[0]}/{MINIMAP_AREA[1]}')
             return
 
         self.route = self._new_route()
         try:
-            self.on_status('正在载入底图')
+            self.on_status(tr('正在载入底图'))
             locators = load_map_locators()
             self._locator = MultiMapLocator(locators)
             # 录制只在出生点所在地图里：开着面板时不会误锁到其它地图。
             self._locator.lock_map(self.spawn.map_id)
             self._layer_paths = {locator.name: locator.image_path for locator in locators}
-            self.on_status('准备切到游戏')
+            self.on_status(tr('准备切到游戏'))
             controller.active_window()
             if not wait_foreground(hwnd, FOREGROUND_WAIT_SECONDS, self.stop_requested):
-                self.failure = '游戏窗口未切到前台，录制未开始'
+                self.failure = tr('游戏窗口未切到前台，录制未开始')
                 return
             self._start_key_listener()
-            self.on_status(f'录制中，先在{self.spawn.name}按 1 打首个途径点')
+            self.on_status(tr('录制中，先在{name}按 1 打首个途径点').format(name=tr_name(self.spawn.name)))
             self.stop_reason = self._sample_loop(hwnd, area.pc_rect)
         except Exception as error:
             log.error(tr('贝果路线打点异常'), exc_info=True)
-            self.failure = f'录制异常：{error}'
+            self.failure = tr('录制异常：{error}').format(error=error)
             return
         finally:
             self._stop_key_listener()
 
         if not self.route.points:
-            self.failure = '没有打下任何点，未生成文件'
+            self.failure = tr('没有打下任何点，未生成文件')
             return
         try:
             self.saved_route = BagelRouteStore(self.ctx).create_custom_route(
@@ -230,7 +230,7 @@ class BagelPointRecorder:
             )
         except (BagelRouteConfigError, ValueError) as error:
             log.error(tr('贝果路线打点保存失败'), exc_info=True)
-            self.failure = f'保存失败：{error}'
+            self.failure = tr('保存失败：{error}').format(error=error)
             return
         self.on_status(self.stop_reason)
 
@@ -243,12 +243,14 @@ class BagelPointRecorder:
     def _first_point_problem(self, point: BagelRoutePoint) -> str | None:
         """首个点的限制：必须是出生点识别半径内、同一分层的途径点。"""
         if point.kind != BEACON:
-            return f'首个点必须是途径点（按 1），当前是{KIND_LABELS.get(point.kind, point.kind)}'
+            return tr('首个点必须是途径点（按 1），当前是{kind}').format(kind=kind_display(point.kind))
         if point.layer != self.spawn.layer:
-            return f'首个点不在{self.spawn.name}所在分层'
+            return tr('首个点不在{name}所在分层').format(name=tr_name(self.spawn.name))
         distance = self.spawn.distance_to(point.x, point.y)
         if distance > self.spawn.radius:
-            return f'首个点距{self.spawn.name} {distance:.0f}px，需在 {self.spawn.radius:.0f}px 内'
+            return tr('首个点距{name} {distance}px，需在 {radius}px 内').format(
+                name=tr_name(self.spawn.name), distance=f'{distance:.0f}', radius=f'{self.spawn.radius:.0f}',
+            )
         return None
 
     def _sample_loop(self, hwnd: int, rect: Rect) -> str:
@@ -316,7 +318,7 @@ class BagelPointRecorder:
                 ),
             )
             self._drain_presses(locator.name, center)
-        return '录制已停止'
+        return tr('录制已停止')
 
     def _build_stats(
         self,
@@ -425,7 +427,7 @@ class BagelPointRecorder:
                 removed = self.route.pop_point()
                 if removed is not None:
                     self.on_undo()
-                    self.on_status(f'已删上一个点 · 剩 {len(self.route.points)} 点')
+                    self.on_status(tr_n('已删上一个点 · 剩 {count} 点', len(self.route.points)).format(count=len(self.route.points)))
                 continue
             kind = POINT_KINDS.get(key)
             if kind is None:
@@ -438,7 +440,11 @@ class BagelPointRecorder:
                     continue
             if self.route.append_point(point):
                 self.on_point(point)
-                self.on_status(f'已打 {len(self.route.points)} 点 · {kind[1]}')
+                self.on_status(
+                    tr_n('已打 {count} 点 · {kind}', len(self.route.points)).format(
+                        count=len(self.route.points), kind=tr(kind[1]),
+                    )
+                )
 
     @staticmethod
     def _crop(screenshot: MatLike, rect: Rect) -> MatLike | None:

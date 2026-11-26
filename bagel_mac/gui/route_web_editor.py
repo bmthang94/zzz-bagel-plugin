@@ -39,7 +39,7 @@ from qfluentwidgets import (
 )
 
 from ..defs import PLUGIN_DIR
-from ..i18n import tr, web_bootstrap_script
+from ..i18n import tr, tr_n, tr_name, web_bootstrap_script
 from ..route.route_model import (
     KIND_COLORS,
     POINT_KINDS,
@@ -221,7 +221,7 @@ class BagelRouteEditor(QDialog):
                 _KindDot(KIND_COLORS[kind], holder), 0,
                 Qt.AlignmentFlag.AlignVCenter,
             )
-            layout.addWidget(_KeyName(label, holder))
+            layout.addWidget(_KeyName(tr(label), holder))
         layout.addSpacing(8)
         layout.addWidget(_KeyCap(tr(UNDO_KEY_LABEL), holder))
         layout.addWidget(_KeyName(tr('删上一个点'), holder))
@@ -449,8 +449,8 @@ class BagelRouteEditor(QDialog):
             raise ValueError(tr('点位不是数组'))
         points = [BagelRoutePoint.from_dict(item) for item in raw]
         route = self.store.save_custom_route(str(args['route_id']), points)
-        log.info(tr('贝果路线「%s」已保存 %s 点'), route.name, len(points))
-        return tr('已保存「{name}」· {count} 点').format(name=route.name, count=len(points)), None
+        log.info(tr_n('贝果路线「%s」已保存 %s 点', len(points)), tr_name(route.name), len(points))
+        return tr_n('已保存「{name}」· {count} 点', len(points)).format(name=tr_name(route.name), count=len(points)), None
 
     def _cmd_activate(self, args: dict[str, Any]) -> tuple[str, Any]:
         """设置出生点当前开启的路线；ref 为 null 表示关闭。"""
@@ -459,13 +459,13 @@ class BagelRouteEditor(QDialog):
         self.store.set_active_route(spawn_id, ref)
         catalog = self.store.load_catalog()
         spawn = catalog.spawn(spawn_id)
-        name = spawn.name if spawn is not None else spawn_id
+        name = tr_name(spawn.name) if spawn is not None else spawn_id
         if ref is None:
             log.info(tr('贝果出生点 %s 已关闭全部路线'), name)
             return tr('{name}已关闭路线，抽到时退出重开').format(name=name), None
         route = catalog.route(ref)
         log.info(tr('贝果出生点 %s 开启路线 %s'), name, ref)
-        return tr('{name}已开启「{route}」').format(name=name, route=route.name if route else ref.route_id), None
+        return tr('{name}已开启「{route}」').format(name=name, route=tr_name(route.name) if route else ref.route_id), None
 
     def _cmd_activate_keycard(self, args: dict[str, Any]) -> tuple[str, Any]:
         """设置房间的开房卡开启选择：spawn_id 为 null 表示房间段，否则为该出生点的入口段。"""
@@ -475,18 +475,18 @@ class BagelRouteEditor(QDialog):
         self.store.set_keycard_route(room_id, spawn_id, ref)
         catalog = self.store.load_catalog()
         room = catalog.room(room_id)
-        room_name = room.name if room is not None else room_id
+        room_name = tr_name(room.name) if room is not None else room_id
         spawn = catalog.spawn(spawn_id) if spawn_id is not None else None
         where = tr('{name}的房间段').format(name=room_name) if spawn_id is None else (
             tr('{spawn}去{room}的入口段').format(
-                spawn=spawn.name if spawn else spawn_id, room=room_name,
+                spawn=tr_name(spawn.name) if spawn else spawn_id, room=room_name,
             )
         )
         log.info(tr('贝果开房卡 %s 设为 %s'), where, ref)
         if ref is None:
             return tr('已关闭{where}').format(where=where), None
         route = catalog.route(ref)
-        return tr('{where}已开启「{route}」').format(where=where, route=route.name if route else ref.route_id), None
+        return tr('{where}已开启「{route}」').format(where=where, route=tr_name(route.name) if route else ref.route_id), None
 
     def _cmd_create(self, args: dict[str, Any]) -> tuple[str, Any]:
         """新增一条自定义路线，首点取出生点坐标；房间段取房间入口坐标。"""
@@ -494,21 +494,21 @@ class BagelRouteEditor(QDialog):
             str(args['name']), str(args.get('spawn_id') or ''), activate=bool(args.get('activate')),
             keycard=_keycard_arg(args),
         )
-        log.info(tr('贝果新增自定义路线「%s」（%s）'), route.name, route.ref)
-        return tr('已新增「{name}」').format(name=route.name), route.ref.to_json()
+        log.info(tr('贝果新增自定义路线「%s」（%s）'), tr_name(route.name), route.ref)
+        return tr('已新增「{name}」').format(name=tr_name(route.name)), route.ref.to_json()
 
     def _cmd_copy(self, args: dict[str, Any]) -> tuple[str, Any]:
         """复制路线为新的自定义路线，副本关闭。"""
         source = BagelRouteRef.from_json(args['ref'])
         route = self.store.copy_route(source, str(args['name']))
-        log.info(tr('贝果路线 %s 已复制为「%s」（%s）'), source, route.name, route.ref)
-        return tr('已复制为「{name}」，副本未开启').format(name=route.name), route.ref.to_json()
+        log.info(tr('贝果路线 %s 已复制为「%s」（%s）'), source, tr_name(route.name), route.ref)
+        return tr('已复制为「{name}」，副本未开启').format(name=tr_name(route.name)), route.ref.to_json()
 
     def _cmd_rename(self, args: dict[str, Any]) -> tuple[str, Any]:
         """修改自定义路线的显示名称。"""
         route = self.store.rename_custom_route(str(args['route_id']), str(args['name']))
-        log.info(tr('贝果路线 %s 改名为「%s」').name)
-        return tr('已改名为「{name}」').format(name=route.name), None
+        log.info(tr('贝果路线 %s 改名为「%s」'), route.ref, tr_name(route.name))
+        return tr('已改名为「{name}」').format(name=tr_name(route.name)), None
 
     def _cmd_delete(self, args: dict[str, Any]) -> tuple[str, Any]:
         """删除自定义路线；开启中的先关闭。"""
@@ -537,9 +537,9 @@ class BagelRouteEditor(QDialog):
         if not name:
             raise ValueError(tr('路线名称不能为空'))
         if any(route.name == name for route in catalog.routes):
-            raise ValueError(tr('已经有同名路线：{name}').format(name=name))
+            raise ValueError(tr('已经有同名路线：{name}').format(name=tr_name(name)))
         self._start_recording(name, spawn, bool(args.get('activate')), keycard)
-        return tr('正在准备录制「{name}」').format(name=name), None
+        return tr('正在准备录制「{name}」').format(name=tr_name(name)), None
 
     def _cmd_test(self, args: dict[str, Any]) -> tuple[str, Any]:
         """试跑一条路线；关闭的路线也可以试跑。"""
@@ -547,7 +547,7 @@ class BagelRouteEditor(QDialog):
         # 先按试跑方式读一遍：入口段要接得上房间段，问题在这里直接报给网页。
         route = self.store.trial_route(ref)
         self._start_test(self.store.load_route(ref))
-        return tr('正在切到游戏，准备试跑「{name}」').format(name=route.name), None
+        return tr('正在切到游戏，准备试跑「{name}」').format(name=tr_name(route.name)), None
 
     def _cmd_locate(self, args: dict[str, Any]) -> tuple[str, Any]:
         """切到游戏定位一次，结果写进网页草稿。"""
@@ -821,7 +821,7 @@ class BagelRouteEditor(QDialog):
                         self.overlay.add_point(
                             (point.x - origin[0], point.y - origin[1]), point.kind,
                         )
-        log.info(tr('贝果路线录制命中分层 %s（%s）').name)
+        log.info(tr('贝果路线录制命中分层 %s（%s）'), layer_name, image_path.name)
 
     def _on_position(self, local_xy: tuple[float, float] | None) -> None:
         """把当前位置推给网页与悬浮窗；层名用最近一次命中层。"""

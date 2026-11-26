@@ -106,7 +106,7 @@ class BagelSettleWarehouse(BagelOperation):
             return self.round_fail('自定义清理每一步都要同时选择类型和品质')
         reason = '残留物资' if self.retry_deposit else '仓库已满' if pair[0] >= pair[1] else '到期或正常结束'
         log.info(tr('贝果结算：出售原因=%s，步骤=%s；安全箱占用=%s，仓库=%s/%s，需重试入仓=%s'),
-                 reason, len(self.filter_groups), occupied, pair[0], pair[1], self.retry_deposit)
+                 tr(reason), len(self.filter_groups), occupied, pair[0], pair[1], self.retry_deposit)
         self.sale_coins = 0
         for index, areas in enumerate(self.filter_groups, start=1):
             log.info(tr('贝果出售步骤：%s/%s，筛选=%s'), index, len(self.filter_groups),

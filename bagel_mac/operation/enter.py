@@ -439,16 +439,16 @@ class BagelEnter(BagelOperation):
         只核对件数，不认卡的种类；带错卡由刷卡处的持卡计数发现。
         """
         if any(states) or not empty_capacity(values.get('背包数量', '')):
-            return f'开房卡只允许在安全箱放 1 张门禁卡，请清空武备、装备、道具和背包；容器 {values}，槽位 {states}'
+            return '开房卡只允许在安全箱放 1 张门禁卡，请清空武备、装备、道具和背包；容器 {v0}，槽位 {v1}'.format(v0=values, v1=states)
         pair = parse_capacity_pair(values.get('安全箱数量', ''))
         if pair is None:
-            return f'安全箱数量不明，停止并保留现场；容器 {values}'
+            return '安全箱数量不明，停止并保留现场；容器 {v0}'.format(v0=values)
         if pair[0] == 0:
             if self.card_picked or self.card_room_name is None:
                 return '挑卡后安全箱仍为空，停止并保留现场'
             return self.STATUS_NEED_CARD
         if pair[0] != 1:
-            return f'开房卡只允许在安全箱放 1 张门禁卡，当前安全箱 {values.get("安全箱数量")}'
+            return '开房卡只允许在安全箱放 1 张门禁卡，当前安全箱 {v0}'.format(v0=values.get('安全箱数量'))
         log.info(tr('贝果开房卡：安全箱 %s，背包 %s，按带 1 张门禁卡入场'), values.get('安全箱数量'), values.get('背包数量'))
         return None
 

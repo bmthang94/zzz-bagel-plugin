@@ -162,6 +162,22 @@
 // 界面翻译：Python 在页面注入标记处写入 window.BAGEL_LANG 与 window.BAGEL_I18N。
 // 中文注入空词典，t() 回退原文，页面渲染与之前完全一致。
 function t(s) { return (window.BAGEL_I18N || {})[s] || s; }
+// 数量为 1 且语言不是中文时，先找「原文|one」单数条目，没有就回退 t()。
+function tn(s, n) {
+  if (n === 1 && window.BAGEL_LANG && !/^zh/.test(window.BAGEL_LANG)) {
+    const one = (window.BAGEL_I18N || {})[s + '|one'];
+    if (one) return one;
+  }
+  return t(s);
+}
+// 出生点、房间、内置路线名是中文数据，只在渲染处翻译：整串精确匹配，否则按 -、_ 与 ' + ' 拆开逐段翻译，
+// 查不到的段保持原样（用户自起的名字不变）。比较、查找、保存、新路线默认名一律用原名。
+function tName(name) {
+  const dict = window.BAGEL_I18N || {};
+  const text = String(name);
+  if (dict[text]) return dict[text];
+  return text.split(/(-|_| \+ )/).map((part, i) => (i % 2 ? part : dict[part] || part)).join('');
+}
 function fmt(s, values) {
   return String(s).replace(/\{([^{}]+)\}/g, (m, key) => (
     values && Object.prototype.hasOwnProperty.call(values, key) ? values[key] : m
@@ -370,17 +386,17 @@ function slotPeers(route) {
 }
 // 开启位置的中文描述，用于提示文案。
 function slotName(route) {
-  if (!route.keycard) { const s = getSpawn(route.spawn_id); return s ? s.name : route.spawn_id; }
+  if (!route.keycard) { const s = getSpawn(route.spawn_id); return s ? tName(s.name) : route.spawn_id; }
   const room = getRoom(route.keycard.room);
-  const roomName = room ? room.name : route.keycard.room;
+  const roomName = room ? tName(room.name) : route.keycard.room;
   if (isRoomSegment(route)) return fmt(t('{name}的房间段'), {name: roomName});
   const s = getSpawn(route.spawn_id);
-  return fmt(t('{spawn}去{room}的入口段'), {spawn: s ? s.name : route.spawn_id, room: roomName});
+  return fmt(t('{spawn}去{room}的入口段'), {spawn: s ? tName(s.name) : route.spawn_id, room: roomName});
 }
 function segmentBadge(r) {
   if (!r.keycard) return '';
   const room = getRoom(r.keycard.room);
-  return isRoomSegment(r) ? t('房间段') : fmt(t('入口段 · {room}'), {room: room ? room.name : r.keycard.room});
+  return isRoomSegment(r) ? t('房间段') : fmt(t('入口段 · {room}'), {room: room ? tName(room.name) : r.keycard.room});
 }
 function activateCall(route, enabled) {
   const ref = enabled ? { source: route.source, route_id: route.route_id } : null;
@@ -483,7 +499,7 @@ function guardUnsaved(next) {
   if (!hasUnsavedEdits()) { next(); return; }
   const route = savedRoute();
   showModal(
-    fmt(t('<h2>有未保存的修改</h2><p>「{name}」的节点修改还没有保存。</p>'), {name: escapeHtml(route.name)})
+    fmt(t('<h2>有未保存的修改</h2><p>「{name}」的节点修改还没有保存。</p>'), {name: escapeHtml(tName(route.name))})
     + '<div class="modal-actions"><button id="draftCancel">' + t('取消') + '</button>'
     + '<button id="draftDiscard">' + t('不保存') + '</button>'
     + '<button class="primary" id="draftSave">' + t('保存并继续') + '</button></div>'
@@ -858,14 +874,11 @@ function renderRouteList() {
   const spawns = spawnsOnMap(state.activeMap);
   const routes = state.routes.filter(r => spawns.some(s => s.spawn_id === groupIdOf(r)));
   const roomCount = spawns.filter(s => s.isRoom).length;
-  document.getElementById('routeCount').textContent = fmt(
-    t('{spawns} 个出生点 · {rooms}{routes} 条路线 · {active} 条已开启'),
-    {
-      spawns: spawns.length - roomCount,
-      rooms: roomCount ? fmt(t('{n} 个房间 · '), {n: roomCount}) : '',
-      routes: routes.length,
-      active: routes.filter(r => r.active).length,
-    });
+  const spawnTotal = spawns.length - roomCount;
+  document.getElementById('routeCount').textContent = fmt(tn('{n} 个出生点', spawnTotal), {n: spawnTotal}) + ' · '
+    + (roomCount ? fmt(tn('{n} 个房间 · ', roomCount), {n: roomCount}) : '')
+    + fmt(tn('{n} 条路线', routes.length), {n: routes.length}) + ' · '
+    + fmt(t('{n} 条已开启'), {n: routes.filter(r => r.active).length});
   if (!spawns.length) {
     list.innerHTML = '<div class="empty">' + t('这张地图暂无已登记出生点，也没有路线。') + '</div>';
     return;
@@ -877,10 +890,10 @@ function renderRouteList() {
     head.className = 'group-head' + (expanded ? ' active' : '');
     const owned = routesForSpawn(s.spawn_id);
     head.innerHTML = '<span class="spawnNumber' + (s.isRoom ? ' room' : '') + '">' + (s.isRoom ? t('卡') : i + 1) + '</span>'
-      + '<strong>' + escapeHtml(s.name) + '</strong>'
+      + '<strong>' + escapeHtml(tName(s.name)) + '</strong>'
       + '<span class="coord-hint">(' + s.x + ', ' + s.y + ')</span>'
       + (s.problem ? '<span class="problem" title="' + escapeHtml(s.problem) + '">' + t('选择无效') + '</span>' : '')
-      + '<span class="count">' + owned.length + (s.isRoom ? t(' 条房间段 ') : t(' 条路线 ')) + (expanded ? '▾' : '▸') + '</span>';
+      + '<span class="count">' + owned.length + (s.isRoom ? tn(' 条房间段 ', owned.length) : tn(' 条路线 ', owned.length)) + (expanded ? '▾' : '▸') + '</span>';
     const add = document.createElement('button');
     add.className = 'small';
     add.textContent = '＋';
@@ -908,7 +921,7 @@ function routeRow(r) {
   const key = routeKey(r);
   const el = document.createElement('div');
   el.className = 'group-route' + (key === state.selectedKey ? ' active' : '');
-  el.innerHTML = '<span class="routeName" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</span>'
+  el.innerHTML = '<span class="routeName" title="' + escapeHtml(tName(r.name)) + '">' + escapeHtml(tName(r.name)) + '</span>'
     + (r.keycard ? '<span class="badge keycard">' + escapeHtml(segmentBadge(r)) + '</span>' : '')
     + '<span class="badge' + (isCustom(r) ? ' custom' : '') + '">' + (isCustom(r) ? t('自定义') : t('默认')) + '</span>';
   el.onclick = () => {
@@ -960,7 +973,7 @@ function requestToggle(key, enabled) {
     }
     showModal(
       fmt(t('<h2>切换开启的路线？</h2><p>{slot}当前开启「{current}」。切换后改为「{next}」，原路线关闭。</p>'),
-        {slot: escapeHtml(slotName(route)), current: escapeHtml(current.name), next: escapeHtml(route.name)})
+        {slot: escapeHtml(slotName(route)), current: escapeHtml(tName(current.name)), next: escapeHtml(tName(route.name))})
       + '<div class="modal-actions"><button id="switchCancel">' + t('取消') + '</button>'
       + '<button class="primary" id="switchConfirm">' + t('切换') + '</button></div>'
     );
@@ -974,8 +987,8 @@ function requestToggle(key, enabled) {
 
 function spawnOptions(selectedId) {
   return realSpawnsOnMap(state.activeMap).map(s => '<option value="' + s.spawn_id + '"'
-    + (s.spawn_id === selectedId ? ' selected' : '') + '>' + fmt(t('{name} ({x}, {y}) · 已有 {n} 条路线'),
-        {name: escapeHtml(s.name), x: s.x, y: s.y, n: routesForSpawn(s.spawn_id).length}) + '</option>').join('');
+    + (s.spawn_id === selectedId ? ' selected' : '') + '>' + fmt(tn('{name} ({x}, {y}) · 已有 {n} 条路线', routesForSpawn(s.spawn_id).length),
+        {name: escapeHtml(tName(s.name)), x: s.x, y: s.y, n: routesForSpawn(s.spawn_id).length}) + '</option>').join('');
 }
 
 // 路线用途：'' 跑刀路线；'entry:<房间>' 开房卡入口段；'room:<房间>' 开房卡房间段。
@@ -994,7 +1007,7 @@ function purposeFields(purpose) {
     + '<label class="field">' + t('段') + '<select id="formSegment">'
     + selectOptions([['entry', t('入口段')], ['room', t('房间段')]], keycard ? keycard.segment : 'entry') + '</select></label>'
     + '<label class="field">' + t('卡房') + '<select id="formRoom">'
-    + selectOptions(rooms.map(r => [r.room_id, r.name]), keycard ? keycard.room : '') + '</select></label>'
+    + selectOptions(rooms.map(r => [r.room_id, tName(r.name)]), keycard ? keycard.room : '') + '</select></label>'
     + '</div>';
 }
 
@@ -1106,7 +1119,7 @@ function openCopyRoute(key) {
     const base = source.name.replace(/-默认$/, '') + '-副本';
     showModal(
       fmt(t('<h2>复制路线</h2><p>复制「{name}」的全部节点，生成一条自定义路线。副本绑定同一个出生点，初始关闭，不影响原路线。</p>'),
-        {name: escapeHtml(source.name)})
+        {name: escapeHtml(tName(source.name))})
       + '<label class="field">' + t('新路线名称') + '<input id="copyName" maxlength="40" value="' + escapeHtml(nextName(base)) + '"></label>'
       + '<div id="copyError" class="form-error"></div>'
       + '<div class="modal-actions"><button id="copyCancel">' + t('取消') + '</button><button class="primary" id="copySubmit">' + t('复制') + '</button></div>'
@@ -1157,7 +1170,7 @@ function openDelete(key) {
   if (reason) { notify(reason); return; }
   guardUnsaved(() => {
     showModal(
-      fmt(t('<h2>删除自定义路线？</h2><p>删除「{name}」后文件会被移除。'), {name: escapeHtml(route.name)})
+      fmt(t('<h2>删除自定义路线？</h2><p>删除「{name}」后文件会被移除。'), {name: escapeHtml(tName(route.name))})
       + (route.active ? t('它当前处于开启状态，删除后该出生点不开启任何路线，不会自动开启其他路线。') : t('其他路线保持原状。'))
       + '</p><div class="modal-actions"><button id="deleteCancel">' + t('取消') + '</button>'
       + '<button class="danger" id="deleteConfirm">' + t('删除路线') + '</button></div>'
@@ -1183,13 +1196,13 @@ function openTrial(key) {
     } else if (route.keycard) {
       const roomSeg = state.routes.find(r => isRoomSegment(r) && r.keycard.room === route.keycard.room && r.active);
       extra = roomSeg
-        ? fmt(t('入口段走完后接上当前开启的房间段「{name}」一起跑，不改变开启选择。'), {name: escapeHtml(roomSeg.name)})
+        ? fmt(t('入口段走完后接上当前开启的房间段「{name}」一起跑，不改变开启选择。'), {name: escapeHtml(tName(roomSeg.name))})
         : t('该房间还没有开启房间段，入口段不能单独试跑，请先开启一条房间段。');
     }
     showModal(
-      fmt(t('<h2>试跑「{name}」？</h2>'), {name: escapeHtml(route.name)})
-      + '<p>' + (isRoomSegment(route) ? t('房间入口：') : t('绑定出生点：')) + escapeHtml(spawn ? spawn.name : route.spawn_id)
-      + (spawn ? ' (' + spawn.x + ', ' + spawn.y + ')' : '') + ' · ' + route.points.length + t(' 个节点') + '</p>'
+      fmt(t('<h2>试跑「{name}」？</h2>'), {name: escapeHtml(tName(route.name))})
+      + '<p>' + (isRoomSegment(route) ? t('房间入口：') : t('绑定出生点：')) + escapeHtml(spawn ? tName(spawn.name) : route.spawn_id)
+      + (spawn ? ' (' + spawn.x + ', ' + spawn.y + ')' : '') + ' · ' + route.points.length + tn(' 个节点', route.points.length) + '</p>'
       + '<div class="note">' + fmt(t('先让角色站在{where}附近（{radius} 像素内），确认后切到游戏，按已保存的节点走一遍。'),
         {where: isRoomSegment(route) ? t('房间入口') : t('该出生点'), radius: spawn ? spawn.radius : 100}) + extra + '</div>'
       + '<div class="modal-actions"><button id="trialCancel">' + t('取消') + '</button><button class="primary" id="trialConfirm">' + t('开始试跑') + '</button></div>'
@@ -1209,19 +1222,19 @@ function openManage() {
     const rows = state.routes.filter(r => state.manageFilter === 'all' || groupIdOf(r) === state.manageFilter);
     showModal(
       '<div class="manager-head"><div><h2>' + t('路线管理') + '</h2><p>' + fmt(
-        t('{n} 条路线 · 每个出生点最多开启一条跑刀路线；开房卡每个房间开启一条房间段、每个出生点开启一条入口段'),
+        tn('{n} 条路线 · 每个出生点最多开启一条跑刀路线；开房卡每个房间开启一条房间段、每个出生点开启一条入口段', state.routes.length),
         {n: state.routes.length})
       + '</p></div><div class="actions"><button id="manageCreate" class="primary">' + t('＋ 新增路线') + '</button> '
       + '<button id="manageRecord">' + t('录制路线') + '</button></div></div>'
       + '<div class="manager-tools"><span>' + t('出生点') + '</span><select id="manageFilter"><option value="all">' + t('全部出生点') + '</option>'
       + state.spawns.concat(state.roomAnchors).map(s => '<option value="' + s.spawn_id + '"' + (state.manageFilter === s.spawn_id ? ' selected' : '')
-        + '>' + escapeHtml(s.name) + '</option>').join('') + '</select></div>'
+        + '>' + escapeHtml(tName(s.name)) + '</option>').join('') + '</select></div>'
       + '<table class="manager-table"><thead><tr><th>' + t('路线名称') + '</th><th>' + t('来源') + '</th><th>' + t('出生点') + '</th><th>' + t('节点') + '</th><th>' + t('开启') + '</th><th>' + t('操作') + '</th></tr></thead><tbody>'
       + (rows.length ? rows.map((r, i) => {
         const spawn = getSpawn(groupIdOf(r));
-        return '<tr><td class="name" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</td>'
+        return '<tr><td class="name" title="' + escapeHtml(tName(r.name)) + '">' + escapeHtml(tName(r.name)) + '</td>'
           + '<td><span class="badge' + (isCustom(r) ? ' custom' : '') + '">' + (isCustom(r) ? t('自定义') : t('默认')) + '</span></td>'
-          + '<td>' + escapeHtml(spawn ? spawn.name : r.spawn_id) + (r.keycard ? ' · ' + escapeHtml(segmentBadge(r)) : '')
+          + '<td>' + escapeHtml(spawn ? tName(spawn.name) : r.spawn_id) + (r.keycard ? ' · ' + escapeHtml(segmentBadge(r)) : '')
           + '</td><td>' + r.points.length + '</td>'
           + '<td><label class="switch"><input type="checkbox" data-toggle="' + i + '"' + (r.active ? ' checked' : '') + '></label></td>'
           + '<td><div class="actions"><button class="small" data-act="view" data-i="' + i + '">' + (isCustom(r) ? t('编辑') : t('查看')) + '</button>'
@@ -1296,16 +1309,16 @@ function renderDetail() {
     hint.textContent = '';
     const spawn = getSpawn(state.activeSpawnId);
     box.innerHTML = '<div class="empty">' + (spawn && spawn.map_id === state.activeMap
-      ? fmt(t('{name}暂无路线。可以新增、录制或复制路线。'), {name: escapeHtml(spawn.name)})
+      ? fmt(t('{name}暂无路线。可以新增、录制或复制路线。'), {name: escapeHtml(tName(spawn.name))})
       : spawnsOnMap(state.activeMap).length ? t('选择一个出生点查看路线。') : t('这张地图暂无已登记出生点。')) + '</div>';
     renderSaveBar();
     return;
   }
   const editable = canEdit();
   const spawn = getSpawn(groupIdOf(route));
-  hint.textContent = route.points.length + t(' 个节点');
-  summary.innerHTML = '<div class="route-summary"><strong title="' + escapeHtml(route.name) + '">' + escapeHtml(route.name)
-    + '</strong><span class="sub">' + escapeHtml(spawn ? spawn.name : route.spawn_id)
+  hint.textContent = route.points.length + tn(' 个节点', route.points.length);
+  summary.innerHTML = '<div class="route-summary"><strong title="' + escapeHtml(tName(route.name)) + '">' + escapeHtml(tName(route.name))
+    + '</strong><span class="sub">' + escapeHtml(spawn ? tName(spawn.name) : route.spawn_id)
     + (route.keycard ? ' · ' + escapeHtml(segmentBadge(route)) : '') + '</span>'
     + '<span class="badge' + (isCustom(route) ? ' custom' : '') + '">' + (isCustom(route) ? t('自定义') : t('默认 · 只读')) + '</span>'
     + (editable ? '<button class="small" id="addNode">' + t('＋ 添加节点') + '</button>' : '') + '</div>';
@@ -1728,7 +1741,7 @@ function drawSpawns() {
     ctx.restore();
     ctx.save();
     ctx.font = '12px "Microsoft YaHei UI", sans-serif';
-    const w = ctx.measureText(s.name).width + 16;
+    const w = ctx.measureText(tName(s.name)).width + 16;
     const lx = Math.min(rect.width - w - 6, Math.max(6, x - w / 2));
     const ly = y + 14;
     ctx.fillStyle = active ? '#fff4d4' : 'rgba(255, 255, 255, 0.93)';
@@ -1739,7 +1752,7 @@ function drawSpawns() {
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = active ? '#8e6a20' : '#4e6887';
-    ctx.fillText(s.name, lx + 8, ly + 15);
+    ctx.fillText(tName(s.name), lx + 8, ly + 15);
     ctx.restore();
   });
 }
@@ -1939,7 +1952,7 @@ function renderHud() {
     const only = !state.followLayer ? '' : focus ? fmt(t(' · 只看 {layer}'), {layer: shortLayer(focus)}) : t(' · 只看当前层：先选一个节点');
     hud.textContent = state.activeMap + cursor + only
       // 房间入口锚点的名称已带「入口」，不再加「出生点」前缀。
-      + (spawn && spawn.map_id === state.activeMap ? ' · ' + (spawn.isRoom ? '' : t('出生点 ')) + spawn.name : '')
+      + (spawn && spawn.map_id === state.activeMap ? ' · ' + (spawn.isRoom ? '' : t('出生点 ')) + tName(spawn.name) : '')
       + ' · ' + mode;
   }
 }

@@ -53,7 +53,7 @@ from ..defs import (
     MODE_DIFFICULTIES,
     MODE_KEYCARD,
 )
-from ..i18n import tr
+from ..i18n import tr, tr_name
 from ..route.route_store import BagelRouteConfigError, BagelRouteStore
 from ..vision.template import template_exists
 from .setting_widgets import (
@@ -436,7 +436,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         with QtCore.QSignalBlocker(self.room_box):
             self.room_box.clear()
             for room in rooms:
-                self.room_box.addItem(room.name, userData=room.room_id)
+                self.room_box.addItem(tr_name(room.name), userData=room.room_id)
             ids = [room.room_id for room in rooms]
             if self.config.keycard_room not in ids and ids and self.config.is_keycard:
                 self.config.keycard_room = ids[0]
@@ -465,7 +465,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
                 selection = catalog.keycard_selection(room_id)
                 if selection.room is None or catalog.route(selection.room) is None:
                     problems.append(tr('未开启房间段'))
-                spawns = [spawn.name for spawn in catalog.spawns if selection.entries.get(spawn.spawn_id) is not None]
+                spawns = [tr_name(spawn.name) for spawn in catalog.spawns if selection.entries.get(spawn.spawn_id) is not None]
                 if not spawns:
                     problems.append(tr('没有出生点开启入口段'))
         if self.config.keycard_reserve > 0 and not template_exists(self.config.keycard_template):

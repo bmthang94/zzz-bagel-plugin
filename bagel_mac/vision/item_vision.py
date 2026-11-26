@@ -12,6 +12,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.utils import cv2_utils
 
 from ..defs import PLUGIN_DIR
+from ..i18n import tr
 from .slots import slot_occupied
 
 if TYPE_CHECKING:
@@ -131,7 +132,7 @@ class StoreChoice:
         """按件数对换时给日志补一句件数比较；其余情况为空串。"""
         if self.source_quantity is None:
             return ''
-        return f'；同优先级比件数 {self.source_quantity} > {self.dest_quantity}'
+        return tr('；同优先级比件数 {source} > {dest}').format(source=self.source_quantity, dest=self.dest_quantity)
 
 
 def is_strictly_better(

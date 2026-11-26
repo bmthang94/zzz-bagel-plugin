@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils.log_utils import log
 
-from ..i18n import tr
+from ..i18n import tr, tr_status
 from ..vision.screen import (
     parse_capacity_pair,
     read_area,
@@ -70,7 +70,7 @@ class BagelStoreCarried(BagelTransferOperation):
         sale_state = warehouse_sale_state(self.ctx, self.last_screenshot)
         if sale_state is not None:
             self._stable_image = None
-            return self.transfer_fail(f'检测到仓库出售状态（{sale_state}），停止并保留现场')
+            return self.transfer_fail('检测到仓库出售状态（{v0}），停止并保留现场'.format(v0=sale_state))
         if not self.round_by_find_area(self.last_screenshot, '贝果-仓库', '放入仓库').is_success:
             self._stable_image = None
             return self.read_again('未识别仓库主画面')
@@ -81,7 +81,9 @@ class BagelStoreCarried(BagelTransferOperation):
             self._stable_image = None
             return self.read_again('无法完整识别背包、安全箱或仓库数量')
         safe_count = len(safe.occupied)
-        self.observation = f'背包 {backpack[0]}/{backpack[1]}，安全箱 {safe_count} 格，仓库 {warehouse[0]}/{warehouse[1]}'
+        self.observation = '背包 {v0}/{v1}，安全箱 {v2} 格，仓库 {v3}/{v4}'.format(
+            v0=backpack[0], v1=backpack[1], v2=safe_count, v3=warehouse[0], v4=warehouse[1],
+        )
         counts = (backpack[0], safe_count, warehouse[0], backpack[1], warehouse[1])
         # 普通背包只核验数字；安全箱没有占用数字，仍按格子状态核验。
         signature = (*counts, safe)
@@ -95,7 +97,7 @@ class BagelStoreCarried(BagelTransferOperation):
         if backpack[0] == 0 and safe_count == 0 and not self.click_when_empty:
             return self.round_success('携带物已全部转存', data={'moved': self.moved, 'warehouse': warehouse})
         if warehouse[0] >= warehouse[1] and not self.return_on_remaining:
-            return self.transfer_fail(f'仓库已满 {warehouse[0]}/{warehouse[1]}')
+            return self.transfer_fail('仓库已满 {v0}/{v1}'.format(v0=warehouse[0], v1=warehouse[1]))
         if not self.ctx.run_context.is_context_running:
             return self.round_wait('等待恢复后重新核对仓库', wait=0.5)
         self.before_counts = counts
@@ -106,7 +108,7 @@ class BagelStoreCarried(BagelTransferOperation):
         self.pending_started = time.monotonic()
         self._stable_image = None
         log.info(tr('贝果携带物入仓：%s；有残留时返回结算=%s，空包仍点击=%s'),
-                 self.observation, self.return_on_remaining, self.click_when_empty)
+                 tr_status(self.observation), self.return_on_remaining, self.click_when_empty)
         result = self.round_by_click_area('贝果-仓库', '放入仓库')
         if not result.is_success:
             return self.transfer_fail('点击放入仓库失败')
@@ -118,7 +120,7 @@ class BagelStoreCarried(BagelTransferOperation):
         if before is None:
             return self.transfer_fail('缺少转存前数量')
         if counts[3:] != before[3:] or counts[2] < before[2]:
-            return self.transfer_fail(f'转存前后容量或仓库占用异常 {before} -> {counts}')
+            return self.transfer_fail('转存前后容量或仓库占用异常 {v0} -> {v1}'.format(v0=before, v1=counts))
         if counts[:2] == (0, 0):
             self.moved += before[0] + before[1]
             self.pending = False
@@ -133,7 +135,7 @@ class BagelStoreCarried(BagelTransferOperation):
             return self.round_success('仓库已满', data={'safe_count': counts[1], 'backpack_count': counts[0]})
         if counts[0] <= before[0] and counts[1] <= before[1] and counts[:2] != before[:2]:
             self.moved += before[0] + before[1] - counts[0] - counts[1]
-            return self.transfer_fail(f'仅部分入仓 {before[:2]} -> {counts[:2]}，停止核对剩余物资')
+            return self.transfer_fail('仅部分入仓 {v0} -> {v1}，停止核对剩余物资'.format(v0=before[:2], v1=counts[:2]))
         if counts[:2] != before[:2]:
-            return self.transfer_fail(f'携带物数量变化异常 {before[:2]} -> {counts[:2]}')
+            return self.transfer_fail('携带物数量变化异常 {v0} -> {v1}'.format(v0=before[:2], v1=counts[:2]))
         return self.wait_transfer('入仓操作后物品未完整转出，等待核对')
