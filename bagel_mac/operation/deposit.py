@@ -6,6 +6,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr
 from ..vision.screen import parse_capacity_pair, read_area
 from ..vision.slots import safe_occupied_indices
 from .operation import BagelOperation
@@ -97,7 +98,7 @@ class BagelDeposit(BagelOperation):
         if self.safe_before == 0 and not self.click_when_empty:
             return self.round_success(self.STATUS_EMPTY, data={'moved': 0})
         log.info(
-            '贝果入仓：安全箱 %s 格，仓库基线 %s',
+            tr('贝果入仓：安全箱 %s 格，仓库基线 %s'),
             self.safe_before, self.warehouse_before,
         )
         return self.round_by_find_and_click_area(
@@ -131,18 +132,17 @@ class BagelDeposit(BagelOperation):
                 )
                 if self._full_waits < frames:
                     return self.round_wait('入仓后有残留，再看一帧', wait=0.5)
-                log.info('贝果入仓：连续 %s 帧安全箱仍占 %s 格，仓库 %s/%s，记为有残留',
+                log.info(tr('贝果入仓：连续 %s 帧安全箱仍占 %s 格，仓库 %s/%s，记为有残留'),
                          self._full_waits, safe_after, pair[0], pair[1])
                 return self.round_success(self.STATUS_FULL, data={'safe_count': safe_after})
             if safe_after < self.safe_before:
                 return self.round_fail(
-                    f'仅部分入仓，安全箱 {self.safe_before} -> {safe_after} 格，'
-                    '停止并保留现场核对物资去向',
+                    '仅部分入仓，安全箱 {v0} -> {v1} 格，停止并保留现场核对物资去向'.format(v0=self.safe_before, v1=safe_after),
                 )
             if pair is not None and pair[0] >= pair[1]:
                 self._full_waits += 1
                 if self._full_waits >= 6:
-                    log.info('贝果入仓：仓库 %s/%s 且安全箱仍占用，记为已满', pair[0], pair[1])
+                    log.info(tr('贝果入仓：仓库 %s/%s 且安全箱仍占用，记为已满'), pair[0], pair[1])
                     return self.round_success(self.STATUS_FULL, data={'safe_count': safe_after})
                 return self.round_wait('仓库已满，等待确认', wait=0.5)
             self._full_waits = 0
@@ -154,7 +154,7 @@ class BagelDeposit(BagelOperation):
             if not clicked.is_success:
                 return clicked
             return self.round_retry(
-                f'安全箱仍有 {safe_after} 格占用，等待清空或停止', wait=0.2,
+                '安全箱仍有 {v0} 格占用，等待清空或停止'.format(v0=safe_after), wait=0.2,
             )
         self._full_waits = 0
         warehouse_after = self._warehouse_count()
@@ -163,7 +163,7 @@ class BagelDeposit(BagelOperation):
         # 全部(N/M) 是占用格数，不是物品总数；并入已有堆叠时 N 可以不变。
         if self.warehouse_before is None or warehouse_after < self.warehouse_before:
             return self.round_fail(
-                f'仓库占用异常（{self.warehouse_before} -> {warehouse_after}），不能记为入仓成功',
+                '仓库占用异常（{v0} -> {v1}），不能记为入仓成功'.format(v0=self.warehouse_before, v1=warehouse_after),
             )
         if self.safe_before == 0:
             return self.round_success(self.STATUS_EMPTY, data={'moved': 0})
@@ -175,7 +175,7 @@ class BagelDeposit(BagelOperation):
             if pair[0] >= pair[1] and not self.return_on_remaining:
                 return self.round_fail('满仓后安全箱清空但仓库占用未变，不能证明物资已入仓')
         log.info(
-            '贝果入仓确认：安全箱 %s -> 0 格，仓库占用 %s -> %s',
+            tr('贝果入仓确认：安全箱 %s -> 0 格，仓库占用 %s -> %s'),
             self.safe_before, self.warehouse_before, warehouse_after,
         )
         return self.round_success(

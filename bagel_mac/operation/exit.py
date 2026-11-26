@@ -80,10 +80,10 @@ class BagelExit(BagelOperation):
             # 按完不直接进下一节点：ESC 没生效时「点击贝果退出」找不到按钮，只能等到超时。
             # 留在本节点看到「退出战斗」才算打开；间隔要长于菜单弹出动画，否则重按会把菜单关掉。
             if self.menu_esc_presses >= self.MENU_ESC_LIMIT:
-                return self.round_fail(f'按了 {self.MENU_ESC_LIMIT} 次 ESC 仍未打开暂停菜单')
+                return self.round_fail('按了 {v0} 次 ESC 仍未打开暂停菜单'.format(v0=self.MENU_ESC_LIMIT))
             self.menu_esc_presses += 1
             self.ctx.controller.btn_press('esc', press_time=0.1)
-            return self.round_wait(f'ESC 打开暂停菜单（第 {self.menu_esc_presses} 次）', wait=1.2)
+            return self.round_wait('ESC 打开暂停菜单（第 {v0} 次）'.format(v0=self.menu_esc_presses), wait=1.2)
         return self.round_retry('未识别贝果局内画面', wait=1)
 
     @node_from(from_name='打开贝果暂停菜单')

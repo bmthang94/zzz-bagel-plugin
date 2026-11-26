@@ -17,6 +17,8 @@ from datetime import datetime
 from math import hypot
 from typing import Any
 
+from ..i18n import tr
+
 ROUTE_VERSION: int = 2
 """路线文件格式版本。v2 起路线必须绑定出生点，开关状态不再写进路线文件。"""
 
@@ -176,26 +178,26 @@ class BagelRoutePoint:
             ValueError: 字段缺失、类型不支持或坐标越界。
         """
         if not isinstance(item, dict):
-            raise ValueError('点位不是对象')
+            raise ValueError(tr('点位不是对象'))
         try:
             kind = KIND_ALIASES.get(str(item['kind']), str(item['kind']))
             layer = str(item['layer'])
             x = float(item['x'])
             y = float(item['y'])
         except (KeyError, TypeError, ValueError) as error:
-            raise ValueError(f'点位字段缺失或不是数字：{error}') from error
+            raise ValueError(tr('点位字段缺失或不是数字：{error}').format(error=error)) from error
         if kind not in KIND_LABELS:
-            raise ValueError(f'不支持的点的类型：{kind}')
+            raise ValueError(tr('不支持的点的类型：{kind}').format(kind=kind))
         if not layer or '/' not in layer:
-            raise ValueError(f'点位分层不完整：{layer}')
+            raise ValueError(tr('点位分层不完整：{layer}').format(layer=layer))
         if not (-COORDINATE_LIMIT <= x <= COORDINATE_LIMIT):
-            raise ValueError(f'x 越界：{x}')
+            raise ValueError(tr('x 越界：{x}').format(x=x))
         if not (-COORDINATE_LIMIT <= y <= COORDINATE_LIMIT):
-            raise ValueError(f'y 越界：{y}')
+            raise ValueError(tr('y 越界：{y}').format(y=y))
         option = str(item.get('elevator_option', '')).strip()
         exit_direction = str(item.get('elevator_exit', ELEVATOR_EXIT_FORWARD))
         if exit_direction not in (ELEVATOR_EXIT_FORWARD, ELEVATOR_EXIT_BACKWARD):
-            raise ValueError(f'电梯出梯方向不支持：{exit_direction}')
+            raise ValueError(tr('电梯出梯方向不支持：{exit_direction}').format(exit_direction=exit_direction))
         if kind != ELEVATOR:
             option = ''
             exit_direction = ELEVATOR_EXIT_FORWARD
@@ -332,13 +334,13 @@ class BagelKeycardTag:
             ValueError: 字段缺失或段类型不支持。
         """
         if not isinstance(data, dict):
-            raise ValueError('开房卡段标记不是对象')
+            raise ValueError(tr('开房卡段标记不是对象'))
         room_id = str(data.get('room', '')).strip()
         segment = str(data.get('segment', ''))
         if not room_id:
-            raise ValueError('开房卡段标记缺少房间')
+            raise ValueError(tr('开房卡段标记缺少房间'))
         if segment not in SEGMENT_LABELS:
-            raise ValueError(f'不支持的开房卡段类型：{segment}')
+            raise ValueError(tr('不支持的开房卡段类型：{segment}').format(segment=segment))
         return cls(room_id, segment)
 
     @property
@@ -369,13 +371,13 @@ class BagelRouteRef:
             ValueError: 来源不支持或标识为空。
         """
         if not isinstance(data, dict):
-            raise ValueError('路线引用不是对象')
+            raise ValueError(tr('路线引用不是对象'))
         source = str(data.get('source', ''))
         route_id = str(data.get('route_id', '')).strip()
         if source not in SOURCES:
-            raise ValueError(f'不支持的路线来源：{source}')
+            raise ValueError(tr('不支持的路线来源：{source}').format(source=source))
         if not route_id:
-            raise ValueError('路线引用缺少标识')
+            raise ValueError(tr('路线引用缺少标识'))
         return cls(source, route_id)
 
     def __str__(self) -> str:
@@ -493,25 +495,25 @@ class BagelRoute:
             ValueError: 版本不支持或数据不完整。
         """
         if not isinstance(data, dict):
-            raise ValueError('路线文件不是对象')
+            raise ValueError(tr('路线文件不是对象'))
         if data.get('version') != ROUTE_VERSION:
-            raise ValueError(f'不支持的路线文件版本：{data.get("version")}')
+            raise ValueError(tr('不支持的路线文件版本：{version}').format(version=data.get("version")))
         route_id = str(data.get('route_id', '')).strip()
         name = str(data.get('name', '')).strip()
         spawn_id = str(data.get('spawn_id', '') or '').strip()
         raw_keycard = data.get('keycard')
         keycard = None if raw_keycard is None else BagelKeycardTag.from_json(raw_keycard)
         if not route_id or not name:
-            raise ValueError('路线缺少标识或名称')
+            raise ValueError(tr('路线缺少标识或名称'))
         # 房间段不绑定出生点，其余路线必须绑定。
         if keycard is not None and keycard.segment == SEGMENT_ROOM:
             if spawn_id:
-                raise ValueError('开房卡房间段不能绑定出生点')
+                raise ValueError(tr('开房卡房间段不能绑定出生点'))
         elif not spawn_id:
-            raise ValueError('路线缺少出生点')
+            raise ValueError(tr('路线缺少出生点'))
         raw_points = data.get('points')
         if not isinstance(raw_points, list):
-            raise ValueError('路线点位不是数组')
+            raise ValueError(tr('路线点位不是数组'))
         return cls(
             route_id=route_id,
             name=name,
@@ -532,9 +534,9 @@ def validate_route_name(name: str) -> str:
     """
     name = name.strip()
     if not name:
-        raise ValueError('路线名称不能为空')
+        raise ValueError(tr('路线名称不能为空'))
     if len(name) > ROUTE_NAME_LIMIT:
-        raise ValueError(f'路线名称不能超过 {ROUTE_NAME_LIMIT} 个字符')
+        raise ValueError(tr('路线名称不能超过 {limit} 个字符').format(limit=ROUTE_NAME_LIMIT))
     return name
 
 
@@ -551,15 +553,22 @@ def check_route_start(route: BagelRoute, spawn: BagelSpawnPoint) -> str | None:
         不满足时返回原因；满足时返回 None。
     """
     if not route.points:
-        return '路线没有点'
+        return tr('路线没有点')
     first = route.points[0]
     if first.kind != BEACON:
-        return f'首点必须是途径点，当前是{KIND_LABELS.get(first.kind, first.kind)}'
+        kind_label: str = KIND_LABELS.get(first.kind, first.kind)
+        return tr('首点必须是途径点，当前是{kind}').format(
+            kind=tr(kind_label)
+        )
     if first.layer != spawn.layer:
-        return f'首点分层 {first.layer} 与{spawn.name}分层 {spawn.layer} 不一致'
+        return tr('首点分层 {first_layer} 与{spawn_name}分层 {spawn_layer} 不一致').format(
+            first_layer=first.layer, spawn_name=spawn.name, spawn_layer=spawn.layer,
+        )
     distance = spawn.distance_to(first.x, first.y)
     if distance > spawn.radius:
-        return f'首点距{spawn.name} {distance:.0f}px，超出识别半径 {spawn.radius:.0f}px'
+        return tr('首点距{spawn_name} {distance}px，超出识别半径 {radius}px').format(
+            spawn_name=spawn.name, distance=round(distance), radius=round(spawn.radius),
+        )
     return None
 
 
@@ -573,7 +582,7 @@ def check_run_points(route: BagelRoute) -> str | None:
         不满足时返回原因；满足或不是跑刀路线时返回 None。
     """
     if route.keycard is None and any(point.kind == KEYCARD_DOOR for point in route.points):
-        return '跑刀路线里不能有房卡门点，刷卡只放在开房卡的房间段'
+        return tr('跑刀路线里不能有房卡门点，刷卡只放在开房卡的房间段')
     return None
 
 
@@ -589,7 +598,7 @@ def check_room_segment(route: BagelRoute, room: BagelKeycardRoom) -> str | None:
     if problem is not None:
         return problem
     if not any(point.kind == KEYCARD_DOOR for point in route.points):
-        return '房间段里没有房卡门点'
+        return tr('房间段里没有房卡门点')
     return None
 
 
@@ -602,15 +611,19 @@ def check_entry_segment(route: BagelRoute, room: BagelKeycardRoom) -> str | None
         不满足时返回原因；满足时返回 None。
     """
     if not route.points:
-        return '入口段没有点'
+        return tr('入口段没有点')
     if any(point.kind == KEYCARD_DOOR for point in route.points):
-        return '入口段里不能有房卡门点，刷卡放在房间段'
+        return tr('入口段里不能有房卡门点，刷卡放在房间段')
     last = route.points[-1]
     if last.layer != room.layer:
-        return f'入口段末点分层 {last.layer} 与房间入口分层 {room.layer} 不一致'
+        return tr('入口段末点分层 {last_layer} 与房间入口分层 {room_layer} 不一致').format(
+            last_layer=last.layer, room_layer=room.layer,
+        )
     distance = room.distance_to(last.x, last.y)
     if distance > room.radius:
-        return f'入口段末点距房间入口 {distance:.0f}px，超出接缝半径 {room.radius:.0f}px'
+        return tr('入口段末点距房间入口 {distance}px，超出接缝半径 {radius}px').format(
+            distance=round(distance), radius=round(room.radius),
+        )
     return None
 
 

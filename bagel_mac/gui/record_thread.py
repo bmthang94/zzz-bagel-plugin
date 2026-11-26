@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 from one_dragon.utils.log_utils import log
 from PySide6.QtCore import QThread, Signal
 
+from ..i18n import tr
+
 if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
@@ -55,18 +57,20 @@ class BagelRecordThread(QThread):
         try:
             self.recorder.run()
         except Exception as error:
-            log.error('贝果路线录制线程异常', exc_info=True)
+            log.error(tr('贝果路线录制线程异常'), exc_info=True)
             self.recorder.failure = f'录制异常：{error}'
         if self.recorder.failure is not None:
             self.done.emit(False, self.recorder.failure)
             return
         route = self.recorder.saved_route
         if route is None:
-            self.done.emit(False, '未生成路线文件')
+            self.done.emit(False, tr('未生成路线文件'))
             return
         self.done.emit(
             True,
-            f'{self.recorder.stop_reason}，已保存为「{route.name}」，{len(route.points)} 点',
+            tr('{reason}，已保存为「{name}」，{count} 点').format(
+                reason=self.recorder.stop_reason, name=route.name, count=len(route.points),
+            ),
         )
 
     def stop(self) -> None:

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr
 from ..vision.screen import (
     parse_capacity_pair,
     read_area,
@@ -104,7 +105,7 @@ class BagelStoreCarried(BagelTransferOperation):
         self.pending_checks = 0
         self.pending_started = time.monotonic()
         self._stable_image = None
-        log.info('贝果携带物入仓：%s；有残留时返回结算=%s，空包仍点击=%s',
+        log.info(tr('贝果携带物入仓：%s；有残留时返回结算=%s，空包仍点击=%s'),
                  self.observation, self.return_on_remaining, self.click_when_empty)
         result = self.round_by_click_area('贝果-仓库', '放入仓库')
         if not result.is_success:
@@ -121,7 +122,7 @@ class BagelStoreCarried(BagelTransferOperation):
         if counts[:2] == (0, 0):
             self.moved += before[0] + before[1]
             self.pending = False
-            log.info('贝果携带物入仓确认：背包=%s -> 0，安全箱=%s -> 0，仓库=%s -> %s/%s',
+            log.info(tr('贝果携带物入仓确认：背包=%s -> 0，安全箱=%s -> 0，仓库=%s -> %s/%s'),
                      before[0], before[1], before[2], counts[2], counts[4])
             return self.round_success('携带物已全部转存', data={'moved': self.moved, 'warehouse': (counts[2], counts[4])})
         # 仓库有空位且携带数量未变，只能说明结果尚未确认，不能提前交给出售。

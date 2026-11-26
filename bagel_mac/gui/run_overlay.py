@@ -29,6 +29,8 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget
 
+from ..i18n import tr
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -106,7 +108,7 @@ class BagelRunOverlay(QWidget):
     def __init__(self) -> None:
         """创建无边框置顶窗口，不抢占游戏焦点。"""
         super().__init__(None)
-        self.setWindowTitle('贝果路线执行')
+        self.setWindowTitle(tr('贝果路线执行'))
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.Tool

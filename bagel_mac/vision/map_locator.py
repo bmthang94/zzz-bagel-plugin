@@ -18,6 +18,7 @@ from cv2.typing import MatLike
 from PIL import Image
 
 from ..defs import PLUGIN_DIR
+from ..i18n import tr
 
 MINIMAP_INNER_RADIUS = 88
 """小地图圆形有效区半径。圆外只可能是 UI 装饰，不参与匹配。"""
@@ -239,7 +240,7 @@ class MultiMapLocator:
             ValueError: 没有传入任何层。
         """
         if not locators:
-            raise ValueError('至少要有一张底版')
+            raise ValueError(tr('至少要有一张底版'))
         self.locators: list[MapLocator] = locators
         self.near_radius: int = near_radius
         self._current: int | None = None
@@ -270,7 +271,7 @@ class MultiMapLocator:
             ValueError: 没有任何层属于该地图。
         """
         if not any(locator.map_id == map_id for locator in self.locators):
-            raise ValueError(f'没有属于地图 {map_id} 的分层')
+            raise ValueError(tr('没有属于地图 {v0} 的分层').format(v0=map_id))
         self._map_id = map_id
         if self._current is not None and self.locators[self._current].map_id != map_id:
             self._current = None

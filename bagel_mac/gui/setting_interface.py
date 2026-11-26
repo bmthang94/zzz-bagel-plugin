@@ -53,6 +53,7 @@ from ..defs import (
     MODE_DIFFICULTIES,
     MODE_KEYCARD,
 )
+from ..i18n import tr
 from ..route.route_store import BagelRouteConfigError, BagelRouteStore
 from ..vision.template import template_exists
 from .setting_widgets import (
@@ -80,12 +81,13 @@ class _UsageDialog(MessageBoxBase):
         """先显示启动检查，其他规则按需展开。"""
         super().__init__(parent)
         self.widget.setFixedWidth(680)
-        self.viewLayout.addWidget(SubtitleLabel('使用说明', self))
-        intro = BodyLabel('先完成「开始前」的 4 项检查。其他规则可按需展开。', self)
+        self.viewLayout.addWidget(SubtitleLabel(tr('使用说明'), self))
+        intro = BodyLabel(tr('先完成「开始前」的 4 项检查。其他规则可按需展开。'), self)
         intro.setWordWrap(True)
         self.viewLayout.addWidget(intro)
         terms = CaptionLabel(
-            '入箱：将物品装入局内安全箱。\n入仓：将携带物存入贝果仓库。\n空箱：结算开始时安全箱为空。', self
+            tr('入箱：将物品装入局内安全箱。\n入仓：将携带物存入贝果仓库。\n空箱：结算开始时安全箱为空。'),
+            self,
         )
         terms.setWordWrap(True)
         self.viewLayout.addWidget(terms)
@@ -102,12 +104,12 @@ class _UsageDialog(MessageBoxBase):
             card = SimpleCardWidget(contents)
             layout = QVBoxLayout(card)
             layout.setContentsMargins(12, 10, 12, 12)
-            heading = TransparentPushButton(FluentIcon.ARROW_DOWN, title, card)
+            heading = TransparentPushButton(FluentIcon.ARROW_DOWN, tr(title), card)
             heading.setCheckable(True)
             heading.setChecked(index == 0)
             list_tag = 'ol' if index == 0 else 'ul'
             items = ''.join(
-                f'<li style="margin-bottom: 8px;"><b>{escape(label)}</b>：{escape(body)}</li>'
+                f'<li style="margin-bottom: 8px;"><b>{escape(tr(label))}</b>{escape(tr("："))}{escape(tr(body))}</li>'
                 for label, body in entries
             )
             text = BodyLabel(
@@ -126,7 +128,7 @@ class _UsageDialog(MessageBoxBase):
         # 滚动区及内容容器透出弹窗底色，避免 Qt 默认浅色背景覆盖黑夜主题。
         scroll.enableTransparentBackground()
         self.viewLayout.addWidget(scroll)
-        self.yesButton.setText('关闭')
+        self.yesButton.setText(tr('关闭'))
         self.hideCancelButton()
 
 
@@ -136,14 +138,14 @@ class NonHazardNoticeDialog(MessageBoxBase):
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self.widget.setFixedWidth(520)
-        self.viewLayout.addWidget(SubtitleLabel('困难和常规需要换路线', self))
+        self.viewLayout.addWidget(SubtitleLabel(tr('困难和常规需要换路线'), self))
         content = BodyLabel(
-            '1. 困难和常规会刷出「助战物资」，沿用高危路线时可能卡在这些物资上。\n'
-            '2. 天赋未满时，卸下装备后的血量也不够跑完较长路线。\n'
-            '\n'
-            '请在路线编辑器中改开「录像店-非高危」和「白鸽工地站-非高危」，\n'
-            '并关闭其他出生点。\n'
-            '点确定不会自动切换路线。',
+            tr('1. 困难和常规会刷出「助战物资」，沿用高危路线时可能卡在这些物资上。\n'
+               '2. 天赋未满时，卸下装备后的血量也不够跑完较长路线。\n'
+               '\n'
+               '请在路线编辑器中改开「录像店-非高危」和「白鸽工地站-非高危」，\n'
+               '并关闭其他出生点。\n'
+               '点确定不会自动切换路线。'),
             self,
         )
         content.setWordWrap(True)
@@ -152,7 +154,7 @@ class NonHazardNoticeDialog(MessageBoxBase):
         self.setClosableOnMaskClicked(False)
         self.remaining_seconds: int = 10
         self.yesButton.setEnabled(False)
-        self.yesButton.setText(f'确定 ({self.remaining_seconds}s)')
+        self.yesButton.setText(tr('确定 ({seconds}s)').format(seconds=self.remaining_seconds))
 
         self.timer: QTimer = QTimer(self)
         self.timer.setInterval(1000)
@@ -162,11 +164,11 @@ class NonHazardNoticeDialog(MessageBoxBase):
     def _on_tick(self) -> None:
         self.remaining_seconds -= 1
         if self.remaining_seconds > 0:
-            self.yesButton.setText(f'确定 ({self.remaining_seconds}s)')
+            self.yesButton.setText(tr('确定 ({seconds}s)').format(seconds=self.remaining_seconds))
         else:
             self.timer.stop()
             self.yesButton.setEnabled(True)
-            self.yesButton.setText('确定')
+            self.yesButton.setText(tr('确定'))
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if self.remaining_seconds > 0 and event.key() == Qt.Key.Key_Escape:
@@ -190,7 +192,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         super().__init__(
             content_widget=None,
             object_name='setting_interface',
-            nav_text_cn='贝果计划设置',
+            nav_text_cn=tr('贝果计划设置'),
             parent=parent,
         )
         self.ctx: ZContext = ctx
@@ -208,16 +210,16 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         layout.setSpacing(18)
         header = QHBoxLayout()
         title = QVBoxLayout()
-        title.addWidget(SubtitleLabel('贝果计划', widget))
-        title.addWidget(CaptionLabel('设置仅用于当前账号和应用组', widget))
+        title.addWidget(SubtitleLabel(tr('贝果计划'), widget))
+        title.addWidget(CaptionLabel(tr('设置仅用于当前账号和应用组'), widget))
         header.addLayout(title)
         header.addStretch(1)
-        help_button = TransparentPushButton('使用说明', widget)
+        help_button = TransparentPushButton(tr('使用说明'), widget)
         help_button.clicked.connect(self._show_usage)
         header.addWidget(help_button, 0, Qt.AlignmentFlag.AlignTop)
         # 路线编辑器依赖源码目录与网页资源，打包运行时没有这些文件，只在源码模式提供入口。
         if not os_utils.run_in_exe():
-            editor_button = TransparentPushButton('打开路线编辑器', widget)
+            editor_button = TransparentPushButton(tr('打开路线编辑器'), widget)
             editor_button.clicked.connect(self._open_route_editor)
             header.addWidget(editor_button, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(header)
@@ -228,8 +230,8 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         layout.addWidget(self._make_end_conditions(widget))
         self.blueprint_priority: SwitchSettingCard = SwitchSettingCard(
             icon=FluentIcon.DOCUMENT,
-            title='蓝图优先',
-            content='局内优先拾取蓝图',
+            title=tr('蓝图优先'),
+            content=tr('局内优先拾取蓝图'),
             parent=widget,
         )
         self.blueprint_priority.setFixedHeight(88)
@@ -248,21 +250,21 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         grid.setVerticalSpacing(12)
         grid.setColumnStretch(2, 1)
         self.mode_segment: ChoiceSegment = ChoiceSegment(
-            [(item.value.value, item.value.ui_text) for item in BagelMode], '运行模式', card,
+            [(item.value.value, item.value.label) for item in BagelMode], tr('运行模式'), card,
         )
         self.map_segment: ChoiceSegment = ChoiceSegment(
-            [(item.value.value, item.value.ui_text) for item in BagelMap], '地图', card,
+            [(item.value.value, item.value.label) for item in BagelMap], tr('地图'), card,
         )
         self.difficulty_segment: ChoiceSegment = ChoiceSegment(
-            [(item.value.value, item.value.ui_text) for item in BagelDifficulty], '挑战难度', card,
+            [(item.value.value, item.value.label) for item in BagelDifficulty], tr('挑战难度'), card,
         )
         self.map_hint: CaptionLabel = CaptionLabel(card)
         self.map_hint.setWordWrap(True)
         self.difficulty_hint: CaptionLabel = CaptionLabel(card)
         for row, (label, segment, hint) in enumerate((
-            ('模式', self.mode_segment, None),
-            ('地图', self.map_segment, self.map_hint),
-            ('难度', self.difficulty_segment, self.difficulty_hint),
+            (tr('模式'), self.mode_segment, None),
+            (tr('地图'), self.map_segment, self.map_hint),
+            (tr('难度'), self.difficulty_segment, self.difficulty_hint),
         )):
             grid.addWidget(BodyLabel(label, card), row, 0)
             grid.addWidget(segment, row, 1)
@@ -281,10 +283,10 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         layout.setSpacing(10)
         room_row = QHBoxLayout()
         room_row.setSpacing(12)
-        room_row.addWidget(BodyLabel('房间', card))
+        room_row.addWidget(BodyLabel(tr('房间'), card))
         self.room_box: ComboBox = ComboBox(card)
         self.room_box.setMinimumWidth(ChoiceSegment.WIDTH)
-        self.room_box.setAccessibleName('开房卡房间')
+        self.room_box.setAccessibleName(tr('开房卡房间'))
         self.room_box.currentIndexChanged.connect(self._on_room_changed)
         room_row.addWidget(self.room_box)
         room_row.addStretch(1)
@@ -295,18 +297,18 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         reserve_row = QHBoxLayout()
         reserve_row.setSpacing(8)
         self.keycard_reserve: CountSpinBox = CountSpinBox(0, 999, card)
-        self.keycard_reserve.setAccessibleName('保留张数')
-        self.keycard_reserve.setToolTip('仓库里这个房间的卡不多于这个数就结束任务；0 表示用到没卡为止')
+        self.keycard_reserve.setAccessibleName(tr('保留张数'))
+        self.keycard_reserve.setToolTip(tr('仓库里这个房间的卡不多于这个数就结束任务；0 表示用到没卡为止'))
         self.keycard_reserve.valueChanged.connect(lambda _value: self._refresh_keycard_status())
-        reserve_row.addWidget(BodyLabel('仓库保留', card))
+        reserve_row.addWidget(BodyLabel(tr('仓库保留'), card))
         reserve_row.addWidget(self.keycard_reserve)
-        reserve_row.addWidget(BodyLabel('张门禁卡', card))
+        reserve_row.addWidget(BodyLabel(tr('张门禁卡'), card))
         reserve_row.addStretch(1)
         layout.addLayout(reserve_row)
 
         buy_switch_row = QHBoxLayout()
         buy_switch_row.setSpacing(12)
-        buy_switch_row.addWidget(BodyLabel('是否自动购买房卡', card))
+        buy_switch_row.addWidget(BodyLabel(tr('是否自动购买房卡'), card))
         self.auto_buy_keycard: SettingSwitch = SettingSwitch('是否自动购买房卡', card)
         self.auto_buy_keycard.state_changed.connect(self._refresh_buy_keycard_options)
         buy_switch_row.addWidget(self.auto_buy_keycard)
@@ -316,14 +318,14 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         buy_count_row = QHBoxLayout()
         buy_count_row.setSpacing(8)
         self.buy_keycard_count: CountSpinBox = CountSpinBox(1, 30, card)
-        self.buy_keycard_count.setAccessibleName('确定购买房卡数量')
-        buy_count_row.addWidget(BodyLabel('确定购买房卡数量', card))
+        self.buy_keycard_count.setAccessibleName(tr('确定购买房卡数量'))
+        buy_count_row.addWidget(BodyLabel(tr('确定购买房卡数量'), card))
         buy_count_row.addWidget(self.buy_keycard_count)
-        buy_count_row.addWidget(BodyLabel('张', card))
+        buy_count_row.addWidget(BodyLabel(tr('张'), card))
         buy_count_row.addStretch(1)
         layout.addLayout(buy_count_row)
 
-        self.buy_count_hint: CaptionLabel = CaptionLabel('上限30张', card)
+        self.buy_count_hint: CaptionLabel = CaptionLabel(tr('上限30张'), card)
         self.buy_count_hint.setWordWrap(True)
         layout.addWidget(self.buy_count_hint)
         return card
@@ -339,21 +341,31 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         if self.config is None:
             return
         mode = self.config.mode
-        mode_name = BagelMode.KEYCARD.value.ui_text if mode == MODE_KEYCARD else BagelMode.RUN.value.ui_text
+        mode_name = (
+            BagelMode.KEYCARD.value.label if mode == MODE_KEYCARD else BagelMode.RUN.value.label
+        )
         maps = self._allowed_maps()
         difficulties = MODE_DIFFICULTIES[mode]
         self.mode_segment.set_value(mode)
         self.map_segment.set_value(self.config.map_name)
         self.difficulty_segment.set_value(self.config.run_difficulty)
         disabled = [item.value.value for item in BagelMap if item.value.value not in maps]
-        map_reason = f'{"、".join(disabled)}还没有登记开房卡房间' if disabled else ''
+        map_reason = (
+            tr('{map_names}还没有登记开房卡房间').format(
+                map_names=tr('、').join(tr(name) for name in disabled)
+            )
+            if disabled else ''
+        )
         self.map_segment.set_allowed(maps, map_reason)
         if self.config.is_keycard:
             self.map_hint.setText(map_reason)
             self.map_hint.setTextColor('#606060', '#a0a0a0')
         else:
             self._refresh_run_map_hint()
-        difficulty_reason = f'{mode_name}固定{"、".join(difficulties)}'
+        difficulty_reason = tr('{mode_name}固定{difficulties}').format(
+            mode_name=tr(mode_name),
+            difficulties=tr('、').join(tr(name) for name in difficulties),
+        )
         self.difficulty_segment.set_allowed(difficulties, difficulty_reason)
         self.difficulty_hint.setText(difficulty_reason if len(difficulties) < len(BagelDifficulty) else '')
         self.keycard_card.setVisible(self.config.is_keycard)
@@ -369,12 +381,14 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         try:
             count = BagelRouteStore(self.ctx).load_catalog().active_count(map_name)
         except (OSError, ValueError, BagelRouteConfigError) as error:
-            log.error('贝果设置页读取路线开启情况失败', exc_info=True)
-            self.map_hint.setText(f'读取路线失败：{error}')
+            log.error(tr('贝果设置页读取路线开启情况失败'), exc_info=True)
+            self.map_hint.setText(tr('读取路线失败：{error}').format(error=error))
             self.map_hint.setTextColor('#a4262c', '#f0b6bb')
             return
         if count == 0:
-            self.map_hint.setText(f'{map_name}没有开启的跑刀路线，无法启动。')
+            self.map_hint.setText(
+                tr('{map_name}没有开启的跑刀路线，无法启动。').format(map_name=tr(map_name))
+            )
             self.map_hint.setTextColor('#a4262c', '#f0b6bb')
         else:
             self.map_hint.setText('')
@@ -384,7 +398,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         try:
             self._rooms = BagelRouteStore(self.ctx).load_catalog().rooms
         except (OSError, ValueError, BagelRouteConfigError):
-            log.error('贝果设置页读取房间清单失败', exc_info=True)
+            log.error(tr('贝果设置页读取房间清单失败'), exc_info=True)
             self._rooms = []
 
     def _allowed_maps(self) -> tuple[str, ...]:
@@ -443,24 +457,28 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
             problems.append(str(error))
         if catalog is not None:
             if catalog.room(room_id) is None:
-                problems.append('未选择房间')
+                problems.append(tr('未选择房间'))
             else:
                 problem = catalog.keycard_problem(room_id)
                 if problem is not None:
                     problems.append(problem)
                 selection = catalog.keycard_selection(room_id)
                 if selection.room is None or catalog.route(selection.room) is None:
-                    problems.append('未开启房间段')
+                    problems.append(tr('未开启房间段'))
                 spawns = [spawn.name for spawn in catalog.spawns if selection.entries.get(spawn.spawn_id) is not None]
                 if not spawns:
-                    problems.append('没有出生点开启入口段')
+                    problems.append(tr('没有出生点开启入口段'))
         if self.config.keycard_reserve > 0 and not template_exists(self.config.keycard_template):
-            problems.append('没有卡图标，保留张数只能填 0')
+            problems.append(tr('没有卡图标，保留张数只能填 0'))
         if problems:
-            self.keycard_status.setText('；'.join(problems))
+            self.keycard_status.setText(tr('；').join(problems))
             self.keycard_status.setTextColor('#a4262c', '#f0b6bb')
         else:
-            self.keycard_status.setText(f'可用出生点：{"、".join(spawns)}')
+            self.keycard_status.setText(
+                tr('可用出生点：{spawns}').format(
+                    spawns=tr('、').join(spawns)
+                )
+            )
             self.keycard_status.setTextColor('#606060', '#a0a0a0')
 
     def _on_mode_changed(self, mode: str) -> None:
@@ -499,16 +517,16 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         sentence.setSpacing(8)
         self.success_count: CountSpinBox = CountSpinBox(0, 1000, card)
         self.failure_count: CountSpinBox = CountSpinBox(1, 10, card)
-        self.success_count.setAccessibleName('累计成功次数')
-        self.failure_count.setAccessibleName('连续失败次数')
-        sentence.addWidget(BodyLabel('累计成功', card))
+        self.success_count.setAccessibleName(tr('累计成功次数'))
+        self.failure_count.setAccessibleName(tr('连续失败次数'))
+        sentence.addWidget(BodyLabel(tr('累计成功'), card))
         sentence.addWidget(self.success_count)
-        sentence.addWidget(BodyLabel('次 或 连续失败', card))
+        sentence.addWidget(BodyLabel(tr('次 或 连续失败'), card))
         sentence.addWidget(self.failure_count)
-        sentence.addWidget(BodyLabel('次后结束任务', card))
+        sentence.addWidget(BodyLabel(tr('次后结束任务'), card))
         sentence.addStretch(1)
         layout.addLayout(sentence)
-        hint = CaptionLabel('成功次数为 0 表示不限；全局或同一路线连续失败达到上限时结束。', card)
+        hint = CaptionLabel(tr('成功次数为 0 表示不限；全局或同一路线连续失败达到上限时结束。'), card)
         hint.setWordWrap(True)
         layout.addWidget(hint)
         return card
@@ -526,7 +544,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         icon = IconWidget(FluentIcon.TAG, card)
         icon.setFixedSize(24, 24)
         header.addWidget(icon)
-        header.addWidget(StrongBodyLabel('自动出售', card), 1)
+        header.addWidget(StrongBodyLabel(tr('自动出售'), card), 1)
         self.auto_clean_switch: AutoSaleSwitch = AutoSaleSwitch(card)
         self.auto_clean_switch.state_changed.connect(self._refresh_clean_options)
         header.addWidget(self.auto_clean_switch)
@@ -547,19 +565,19 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         interval = QHBoxLayout()
         interval.setSpacing(8)
         self.sell_interval: CountSpinBox = CountSpinBox(1, 999, self.sale_children)
-        self.sell_interval.setAccessibleName('出售间隔')
-        interval.addWidget(BodyLabel('每累计入仓', self.sale_children))
+        self.sell_interval.setAccessibleName(tr('出售间隔'))
+        interval.addWidget(BodyLabel(tr('每累计入仓'), self.sale_children))
         interval.addWidget(self.sell_interval)
-        interval.addWidget(BodyLabel('次后出售', self.sale_children))
+        interval.addWidget(BodyLabel(tr('次后出售'), self.sale_children))
         interval.addStretch(1)
         children.addLayout(interval)
         warning = QVBoxLayout()
         warning.setSpacing(2)
-        warning_title = StrongBodyLabel('已有库存也会出售', self.sale_children)
+        warning_title = StrongBodyLabel(tr('已有库存也会出售'), self.sale_children)
         warning_title.setTextColor('#805000', '#e9c986')
         warning.addWidget(warning_title)
         safe_hint = CaptionLabel(
-            '安全箱内符合出售条件的物品也可能被出售。', self.sale_children
+            tr('安全箱内符合出售条件的物品也可能被出售。'), self.sale_children
         )
         safe_hint.setWordWrap(True)
         warning.addWidget(safe_hint)
@@ -567,7 +585,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         children.addWidget(CardSeparator(self.sale_children))
         scope_header = QHBoxLayout()
         scope_header.setSpacing(20)
-        scope_header.addWidget(StrongBodyLabel('出售范围', self.sale_children))
+        scope_header.addWidget(StrongBodyLabel(tr('出售范围'), self.sale_children))
         self.clean_mode: SaleModeSelector = SaleModeSelector(self.sale_children)
         self.clean_mode.state_changed.connect(self._refresh_clean_options)
         scope_header.addWidget(self.clean_mode)
@@ -578,7 +596,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         self.custom_scope: QWidget = self._make_custom_scope(self.sale_children)
         children.addWidget(self.custom_scope)
         layout.addWidget(self.sale_children)
-        self.sale_disabled: CaptionLabel = CaptionLabel('只入仓，不出售。', card)
+        self.sale_disabled: CaptionLabel = CaptionLabel(tr('只入仓，不出售。'), card)
         self.sale_disabled.setContentsMargins(60, 13, 22, 15)
         layout.addWidget(self.sale_disabled)
         return card
@@ -589,7 +607,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         column = QVBoxLayout(widget)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(12)
-        hint = CaptionLabel('按以下顺序出售，每一步都需同时符合物品类型和品质。', widget)
+        hint = CaptionLabel(tr('按以下顺序出售，每一步都需同时符合物品类型和品质。'), widget)
         hint.setWordWrap(True)
         column.addWidget(hint)
         table = QGridLayout()
@@ -597,14 +615,16 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         table.setVerticalSpacing(12)
         table.setColumnStretch(1, 1)
         table.setColumnStretch(2, 1)
-        for index, title in enumerate(('执行顺序', '物品类型', '品质')):
+        for index, title in enumerate((tr('执行顺序'), tr('物品类型'), tr('品质'))):
             table.addWidget(CaptionLabel(title, widget), 0, index)
         for row, (types, qualities) in enumerate(DEFAULT_CLEAN_STEPS, start=1):
-            table.addWidget(CaptionLabel(f'第 {row} 步', widget), row, 0)
+            table.addWidget(
+                CaptionLabel(tr('第 {row} 步').format(row=row), widget), row, 0
+            )
             table.addWidget(tag_row(types, widget), row, 1)
             table.addWidget(tag_row(qualities, widget), row, 2)
         column.addLayout(table)
-        keep_hint = QLabel('金色蓝图默认保留', widget)
+        keep_hint = QLabel(tr('金色蓝图默认保留'), widget)
         keep_hint.setObjectName('blueprintKeepHint')
         FluentStyleSheet.LABEL.apply(keep_hint)
         setFont(keep_hint, 13)
@@ -614,7 +634,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
             'QLabel#blueprintKeepHint { color: #a6dfbe; background: #29322e; border: 1px solid #455a4d; border-radius: 5px; padding: 10px 12px; }',
         )
         column.addWidget(keep_hint)
-        label = CaptionLabel('同时保留全部 Z 品质，以及装备、战术道具和门禁卡。', widget)
+        label = CaptionLabel(tr('同时保留全部 Z 品质，以及装备、战术道具和门禁卡。'), widget)
         label.setWordWrap(True)
         column.addWidget(label)
         return widget
@@ -626,7 +646,7 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
         hint = CaptionLabel(
-            '每步都要选择类型和品质，同时符合才出售。按从上到下的顺序执行。', widget
+            tr('每步都要选择类型和品质，同时符合才出售。按从上到下的顺序执行。'), widget
         )
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -634,11 +654,11 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         self.clean_step_layout.setSpacing(10)
         layout.addLayout(self.clean_step_layout)
         self.empty_steps: BodyLabel = BodyLabel(
-            '先添加一步，再选择要出售的类型和品质。', widget
+            tr('先添加一步，再选择要出售的类型和品质。'), widget
         )
         layout.addWidget(self.empty_steps)
         self.add_clean_step_btn: PushButton = PushButton(
-            FluentIcon.ADD, '新增出售步骤', widget
+            FluentIcon.ADD, tr('新增出售步骤'), widget
         )
         self.add_clean_step_btn.clicked.connect(self._on_add_clean_step)
         layout.addWidget(self.add_clean_step_btn, 0, Qt.AlignmentFlag.AlignLeft)
@@ -690,25 +710,33 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         ]
         self.empty_steps.setVisible(not steps)
         if not steps:
-            validation = '尚未添加出售步骤，任务无法启动。请新增一步，或改用默认方案。'
+            validation = tr('尚未添加出售步骤，任务无法启动。请新增一步，或改用默认方案。')
         elif incomplete:
-            validation = f'第 {"、".join(incomplete)} 步未选全类型和品质，任务无法启动。请补全选项，或删除未选全的步骤。'
+            validation = tr('第 {steps} 步未选全类型和品质，任务无法启动。请补全选项，或删除未选全的步骤。').format(
+                steps=tr('、').join(incomplete)
+            )
         else:
             validation = ''
         self.sale_validation.setText(validation)
         self.sale_validation.setVisible(bool(validation))
         z_steps = [step for step in steps if 'Z' in step.qualities]
-        z_types = '、'.join(
-            name for name in CLEAN_TYPES if any(name in step.types for step in z_steps)
+        z_types = tr('、').join(
+            tr(name) for name in CLEAN_TYPES if any(name in step.types for step in z_steps)
         )
-        self.z_warning.setText(f'红色「{z_types or "物品"}」会被出售，请注意确认！')
+        self.z_warning.setText(
+            tr('红色「{z_types}」会被出售，请注意确认！').format(z_types=z_types or tr('物品'))
+        )
         self.z_warning.setVisible(bool(z_steps))
         # 「其他」类型包含蓝图：S 品质为金色蓝图，Z 品质为红色蓝图。
-        blueprint_colors = '和'.join(
-            color for quality, color in (('S', '金色'), ('Z', '红色'))
+        blueprint_colors = tr('和').join(
+            tr(color) for quality, color in (('S', '金色'), ('Z', '红色'))
             if any('其他' in step.types and quality in step.qualities for step in steps)
         )
-        self.blueprint_sale_warning.setText(f'{blueprint_colors}蓝图会被出售，请注意确认！')
+        self.blueprint_sale_warning.setText(
+            tr('{blueprint_colors}蓝图会被出售，请注意确认！').format(
+                blueprint_colors=blueprint_colors
+            )
+        )
         self.blueprint_sale_warning.setVisible(bool(blueprint_colors))
         self.total_preview.set_steps(steps)
 
@@ -775,8 +803,8 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         try:
             editor = BagelRouteEditor(self.ctx, self.window())
         except (OSError, ValueError) as error:
-            log.error('打开贝果路线编辑器失败', exc_info=True)
-            MessageBox('无法打开路线编辑器', str(error), self.window()).exec()
+            log.error(tr('打开贝果路线编辑器失败'), exc_info=True)
+            MessageBox(tr('无法打开路线编辑器'), str(error), self.window()).exec()
             return
         editor.exec()
         editor.deleteLater()
@@ -806,14 +834,14 @@ class BagelSettingInterface(VerticalScrollInterface, GroupIdMixin):
         problem = self.config.stored_mode_map_problem()
         if problem is not None:
             # 手改配置写进了不认识的值：把界面按默认显示的值写回，启动校验才放行。
-            log.warning('贝果设置：%s，已改回 %s · %s', problem, self.config.mode, self.config.map_name)
+            log.warning(tr('贝果设置：%s，已改回 %s · %s'), problem, self.config.mode, self.config.map_name)
             self.config.mode = self.config.mode
             self.config.map_name = self.config.map_name
         self._read_rooms()
         previous = self._fit_map()
         if previous is not None:
             # 开房卡存了一张没有房间的地图（手改配置）：改到第一张有房间的地图。
-            log.warning('贝果设置：开房卡没有%s的房间，已改到 %s', previous, self.config.map_name)
+            log.warning(tr('贝果设置：开房卡没有%s的房间，已改到 %s'), previous, self.config.map_name)
         self._fill_room_box()
         self._refresh_target()
         for control, field in (

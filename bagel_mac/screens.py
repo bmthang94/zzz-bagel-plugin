@@ -7,6 +7,7 @@ from one_dragon.utils.log_utils import log
 
 from .const import APP_ID
 from .defs import PLUGIN_DIR
+from .i18n import tr
 
 if TYPE_CHECKING:
     from one_dragon.base.screen.screen_loader import ScreenContext
@@ -29,7 +30,7 @@ def ensure_screens(screen_loader: ScreenContext) -> bool:
         return False
     screen_loader.load_extra_screen_dir(str(SCREEN_DIR), default_app_id=APP_ID)
     if screen_loader.get_area(*SENTINEL_SCREEN) is None:
-        log.error('贝果画面定义缺失，重新注入后仍然没有：%s', SCREEN_DIR)
+        log.error(tr('贝果画面定义缺失，重新注入后仍然没有：%s'), SCREEN_DIR)
     else:
-        log.warning('贝果画面定义被其他插件的画面重载冲掉，已重新注入')
+        log.warning(tr('贝果画面定义被其他插件的画面重载冲掉，已重新注入'))
     return True

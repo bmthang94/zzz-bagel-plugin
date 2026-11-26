@@ -27,6 +27,7 @@ import yaml
 from one_dragon.utils.log_utils import log
 
 from ..defs import PLUGIN_DIR, get_plugin_data_dir
+from ..i18n import tr
 from .route_model import (
     SEGMENT_ENTRY,
     SEGMENT_ROOM,
@@ -105,11 +106,11 @@ class BagelKeycardSelection:
             ValueError: 结构不对或引用无效。
         """
         if not isinstance(data, dict):
-            raise ValueError('房间开启选择不是映射')
+            raise ValueError(tr('房间开启选择不是映射'))
         room = data.get('room')
         entries = data.get('entries') or {}
         if not isinstance(entries, dict):
-            raise ValueError('entries 不是映射')
+            raise ValueError(tr('entries 不是映射'))
         return cls(
             room=None if room is None else BagelRouteRef.from_json(room),
             entries={
@@ -176,13 +177,17 @@ class BagelRouteCatalog:
             return None
         room = self.room(route.keycard.room_id)
         if room is None:
-            return f'「{route.name}」所属房间 {route.keycard.room_id} 未登记'
+            return tr('「{route_name}」所属房间 {room_id} 未登记').format(
+                route_name=route.name, room_id=route.keycard.room_id,
+            )
         if route.keycard.segment == SEGMENT_ROOM:
             problem = check_room_segment(route, room)
         else:
             spawn = self.spawn(route.spawn_id)
             if spawn is None:
-                return f'「{route.name}」绑定的出生点 {route.spawn_id} 未登记'
+                return tr('「{route_name}」绑定的出生点 {spawn_id} 未登记').format(
+                route_name=route.name, spawn_id=route.spawn_id,
+            )
             problem = check_route_start(route, spawn) or check_entry_segment(route, room)
         return None if problem is None else f'「{route.name}」{problem}'
 
@@ -194,7 +199,7 @@ class BagelRouteCatalog:
         """
         room = self.room(room_id)
         if room is None:
-            return f'房间 {room_id} 未登记'
+            return tr('房间 {room_id} 未登记').format(room_id=room_id)
         selection = self.keycard_selection(room_id)
         problems: list[str] = []
         refs: list[tuple[BagelRouteRef, str, str]] = []
@@ -204,20 +209,29 @@ class BagelRouteCatalog:
         for ref, segment, spawn_id in refs:
             route = self.route(ref)
             if route is None:
-                problems.append(f'{room.name}开启的路线 {ref} 不存在或已损坏')
+                problems.append(
+                    tr('{room_name}开启的路线 {ref} 不存在或已损坏').format(
+                        room_name=room.name, ref=ref,
+                    )
+                )
                 continue
             if route.keycard is None or route.keycard.room_id != room_id or route.keycard.segment != segment:
-                problems.append(f'「{route.name}」不是{room.name}的{"房间段" if segment == SEGMENT_ROOM else "入口段"}')
+                problems.append(
+                    tr('「{route_name}」不是{room_name}的{segment_label}').format(
+                        route_name=route.name, room_name=room.name,
+                        segment_label=tr('房间段') if segment == SEGMENT_ROOM else tr('入口段'),
+                    )
+                )
                 continue
             if segment == SEGMENT_ENTRY and route.spawn_id != spawn_id:
-                problems.append(f'「{route.name}」绑定的出生点与开启位置不一致')
+                problems.append(tr('「{route_name}」绑定的出生点与开启位置不一致').format(route_name=route.name))
                 continue
             problem = self.segment_problem(route)
             if problem is not None:
                 problems.append(problem)
         if selection.room is None and any(ref is not None for ref in selection.entries.values()):
-            problems.append(f'{room.name}开启了入口段，但没有开启房间段')
-        return '；'.join(problems) if problems else None
+            problems.append(tr('{room_name}开启了入口段，但没有开启房间段').format(room_name=room.name))
+        return tr('；').join(problems) if problems else None
 
     def selection_problem(self, spawn_id: str) -> str | None:
         """检查某个出生点的开启选择能否执行。
@@ -230,15 +244,21 @@ class BagelRouteCatalog:
             return None
         spawn = self.spawn(spawn_id)
         if spawn is None:
-            return f'出生点 {spawn_id} 未登记'
+            return tr('出生点 {spawn_id} 未登记').format(spawn_id=spawn_id)
         route = self.route(ref)
         if route is None:
-            return f'{spawn.name}开启的路线 {ref} 不存在或已损坏'
+            return tr('{spawn_name}开启的路线 {ref} 不存在或已损坏').format(
+            spawn_name=spawn.name, ref=ref,
+        )
         if route.spawn_id != spawn_id:
-            return f'{spawn.name}开启的路线「{route.name}」绑定的是其他出生点'
+            return tr('{spawn_name}开启的路线「{route_name}」绑定的是其他出生点').format(
+            spawn_name=spawn.name, route_name=route.name,
+        )
         problem = check_route_start(route, spawn) or check_run_points(route)
         if problem is not None:
-            return f'{spawn.name}开启的路线「{route.name}」无法开始：{problem}'
+            return tr('{spawn_name}开启的路线「{route_name}」无法开始：{problem}').format(
+            spawn_name=spawn.name, route_name=route.name, problem=problem,
+        )
         return None
 
     def selection_problems(self) -> list[str]:
@@ -285,7 +305,7 @@ class BagelRouteCatalog:
         entry = self.route(entry_ref)
         room_route = self.route(selection.room) if selection.room is not None else None
         if entry is None or room_route is None:
-            raise BagelRouteConfigError('开房卡路线引用失效')
+            raise BagelRouteConfigError(tr('开房卡路线引用失效'))
         return join_keycard_route(entry, room_route)
 
 
@@ -328,10 +348,10 @@ class BagelRouteStore:
                 for item in data['spawn_points']
             ]
         except (OSError, yaml.YAMLError, KeyError, TypeError, ValueError) as error:
-            raise BagelRouteConfigError(f'出生点清单无法读取：{error}') from error
+            raise BagelRouteConfigError(tr('出生点清单无法读取：{error}').format(error=error)) from error
         ids = [item.spawn_id for item in spawns]
         if len(set(ids)) != len(ids):
-            raise BagelRouteConfigError('出生点清单中有重复标识')
+            raise BagelRouteConfigError(tr('出生点清单中有重复标识'))
         return spawns
 
     def load_rooms(self) -> list[BagelKeycardRoom]:
@@ -358,10 +378,10 @@ class BagelRouteStore:
                 for item in (data or {}).get('rooms') or []
             ]
         except (OSError, yaml.YAMLError, KeyError, TypeError, ValueError, AttributeError) as error:
-            raise BagelRouteConfigError(f'开房卡房间清单无法读取：{error}') from error
+            raise BagelRouteConfigError(tr('开房卡房间清单无法读取：{error}').format(error=error)) from error
         ids = [item.room_id for item in rooms]
         if len(set(ids)) != len(ids):
-            raise BagelRouteConfigError('开房卡房间清单中有重复标识')
+            raise BagelRouteConfigError(tr('开房卡房间清单中有重复标识'))
         return rooms
 
     def load_routes(self) -> tuple[list[BagelRoute], list[str]]:
@@ -380,7 +400,7 @@ class BagelRouteStore:
                 try:
                     route = self._read_route(path, source)
                 except (OSError, ValueError) as error:
-                    log.warning('跳过损坏的贝果路线文件 %s：%s', path.name, error)
+                    log.warning(tr('跳过损坏的贝果路线文件 %s：%s'), path.name, error)
                     errors.append(f'{path.name}：{error}')
                     continue
                 routes.append(route)
@@ -404,11 +424,19 @@ class BagelRouteStore:
         catalog = BagelRouteCatalog(spawns, routes, active, errors, rooms, keycard)
         for spawn_id in list(active):
             if catalog.spawn(spawn_id) is None:
-                errors.append(f'开启选择中的出生点 {spawn_id} 未登记，已忽略')
+                errors.append(
+                    tr('开启选择中的出生点 {spawn_id} 未登记，已忽略').format(
+                        spawn_id=spawn_id,
+                    )
+                )
                 del active[spawn_id]
         for room_id in list(keycard):
             if catalog.room(room_id) is None:
-                errors.append(f'开房卡开启选择中的房间 {room_id} 未登记，已忽略')
+                errors.append(
+                    tr('开房卡开启选择中的房间 {room_id} 未登记，已忽略').format(
+                        room_id=room_id,
+                    )
+                )
                 del keycard[room_id]
         return catalog
 
@@ -420,11 +448,11 @@ class BagelRouteStore:
         """
         path = self._route_path(ref)
         if not path.is_file():
-            raise BagelRouteConfigError(f'路线不存在：{ref}')
+            raise BagelRouteConfigError(tr('路线不存在：{ref}').format(ref=ref))
         try:
             return self._read_route(path, ref.source)
         except (OSError, ValueError) as error:
-            raise BagelRouteConfigError(f'路线 {ref} 无法读取：{error}') from error
+            raise BagelRouteConfigError(tr('路线 {ref} 无法读取：{error}').format(ref=ref, error=error)) from error
 
     def active_route(self, spawn_id: str) -> BagelRoute | None:
         """读出某个出生点当前开启的路线快照。
@@ -477,7 +505,11 @@ class BagelRouteStore:
         room_route = catalog.route(room_ref) if room_ref is not None else None
         if room_route is None:
             room = catalog.room(room_id)
-            raise BagelRouteConfigError(f'{room.name if room else room_id}没有开启房间段，入口段无法单独试跑')
+            raise BagelRouteConfigError(
+                tr('{room_name}没有开启房间段，入口段无法单独试跑').format(
+                    room_name=room.name if room else room_id,
+                )
+            )
         problem = catalog.segment_problem(room_route)
         if problem is not None:
             raise BagelRouteConfigError(problem)
@@ -493,18 +525,28 @@ class BagelRouteStore:
         """
         catalog = self.load_catalog()
         if catalog.spawn(spawn_id) is None:
-            raise BagelRouteConfigError(f'出生点未登记：{spawn_id}')
+            raise BagelRouteConfigError(tr('出生点未登记：{spawn_id}').format(spawn_id=spawn_id))
         if ref is not None:
             route = catalog.route(ref)
             if route is None:
-                raise BagelRouteConfigError(f'路线不存在：{ref}')
+                raise BagelRouteConfigError(tr('路线不存在：{ref}').format(ref=ref))
             if route.keycard is not None:
-                raise BagelRouteConfigError(f'「{route.name}」是开房卡{route.keycard.label}，不能作为跑刀路线开启')
+                raise BagelRouteConfigError(
+                tr('「{route_name}」是开房卡{segment_label}，不能作为跑刀路线开启').format(
+                    route_name=route.name, segment_label=tr(route.keycard.label),
+                )
+            )
             if route.spawn_id != spawn_id:
-                raise BagelRouteConfigError(f'路线「{route.name}」绑定的是其他出生点')
+                raise BagelRouteConfigError(
+                tr('路线「{route_name}」绑定的是其他出生点').format(route_name=route.name)
+            )
             problem = check_route_start(route, catalog.spawn(spawn_id)) or check_run_points(route)
             if problem is not None:
-                raise BagelRouteConfigError(f'路线「{route.name}」无法开启：{problem}')
+                raise BagelRouteConfigError(
+                tr('路线「{route_name}」无法开启：{problem}').format(
+                    route_name=route.name, problem=problem,
+                )
+            )
         catalog.active[spawn_id] = ref
         self._write_settings(catalog.active, catalog.keycard)
 
@@ -522,22 +564,28 @@ class BagelRouteStore:
         catalog = self.load_catalog()
         room = catalog.room(room_id)
         if room is None:
-            raise BagelRouteConfigError(f'房间未登记：{room_id}')
+            raise BagelRouteConfigError(tr('房间未登记：{room_id}').format(room_id=room_id))
         if spawn_id is not None and catalog.spawn(spawn_id) is None:
-            raise BagelRouteConfigError(f'出生点未登记：{spawn_id}')
+            raise BagelRouteConfigError(tr('出生点未登记：{spawn_id}').format(spawn_id=spawn_id))
         segment = SEGMENT_ROOM if spawn_id is None else SEGMENT_ENTRY
         if ref is not None:
             route = catalog.route(ref)
             if route is None:
-                raise BagelRouteConfigError(f'路线不存在：{ref}')
-            label = '房间段' if segment == SEGMENT_ROOM else '入口段'
+                raise BagelRouteConfigError(tr('路线不存在：{ref}').format(ref=ref))
+            label = tr('房间段') if segment == SEGMENT_ROOM else tr('入口段')
             if route.keycard is None or route.keycard.room_id != room_id or route.keycard.segment != segment:
-                raise BagelRouteConfigError(f'「{route.name}」不是{room.name}的{label}')
+                raise BagelRouteConfigError(
+                tr('「{route_name}」不是{room_name}的{label}').format(
+                    route_name=route.name, room_name=room.name, label=label,
+                )
+            )
             if spawn_id is not None and route.spawn_id != spawn_id:
-                raise BagelRouteConfigError(f'入口段「{route.name}」绑定的是其他出生点')
+                raise BagelRouteConfigError(
+                tr('入口段「{route_name}」绑定的是其他出生点').format(route_name=route.name)
+            )
             problem = catalog.segment_problem(route)
             if problem is not None:
-                raise BagelRouteConfigError(f'无法开启：{problem}')
+                raise BagelRouteConfigError(tr('无法开启：{problem}').format(problem=problem))
         selection = catalog.keycard.setdefault(room_id, BagelKeycardSelection())
         if spawn_id is None:
             selection.room = ref
@@ -574,7 +622,7 @@ class BagelRouteStore:
         if keycard is not None:
             room = catalog.room(keycard.room_id)
             if room is None:
-                raise BagelRouteConfigError(f'房间未登记：{keycard.room_id}')
+                raise BagelRouteConfigError(tr('房间未登记：{room_id}').format(room_id=keycard.room_id))
             if keycard.segment == SEGMENT_ROOM:
                 spawn_id = ''
                 anchor = room.as_spawn()
@@ -583,7 +631,7 @@ class BagelRouteStore:
         else:
             anchor = catalog.spawn(spawn_id)
         if anchor is None:
-            raise BagelRouteConfigError(f'出生点未登记：{spawn_id}')
+            raise BagelRouteConfigError(tr('出生点未登记：{spawn_id}').format(spawn_id=spawn_id))
         name = self._unique_name_check(catalog, name)
         if points is None:
             points = [BagelRoutePoint(round(anchor.x), round(anchor.y), anchor.layer, 'beacon')]
@@ -608,7 +656,7 @@ class BagelRouteStore:
                         keycard.room_id, None if keycard.segment == SEGMENT_ROOM else spawn_id, route.ref,
                     )
                 except BagelRouteConfigError as error:
-                    log.warning('贝果开房卡%s「%s」已保存，但未开启：%s', keycard.label, route.name, error)
+                    log.warning(tr('贝果开房卡%s「%s」已保存，但未开启：%s'), keycard.label, route.name, error)
         return route
 
     def copy_route(self, ref: BagelRouteRef, name: str) -> BagelRoute:
@@ -652,7 +700,7 @@ class BagelRouteStore:
         catalog = self.load_catalog()
         route = catalog.route(ref)
         if route is None:
-            raise BagelRouteConfigError(f'路线不存在：{ref}')
+            raise BagelRouteConfigError(tr('路线不存在：{ref}').format(ref=ref))
         route.name = self._unique_name_check(catalog, name, ignore=ref)
         self._write_route(route)
         return route
@@ -669,7 +717,7 @@ class BagelRouteStore:
         ref = self._custom_ref(route_id)
         path = self._route_path(ref)
         if not path.is_file():
-            raise BagelRouteConfigError(f'路线不存在：{ref}')
+            raise BagelRouteConfigError(tr('路线不存在：{ref}').format(ref=ref))
         catalog = self.load_catalog()
         changed = False
         for spawn_id, active in catalog.active.items():
@@ -689,7 +737,7 @@ class BagelRouteStore:
         try:
             path.unlink()
         except OSError as error:
-            raise BagelRouteConfigError(f'删除路线文件失败：{error}') from error
+            raise BagelRouteConfigError(tr('删除路线文件失败：{error}').format(error=error)) from error
 
     # ---------- 初始化 ----------
 
@@ -707,7 +755,7 @@ class BagelRouteStore:
             if defaults:
                 keycard.update(defaults)
                 self._write_settings(active, keycard)
-                log.info('贝果路线：为 %d 个未配置的房间开启默认段', len(defaults))
+                log.info(tr('贝果路线：为 %d 个未配置的房间开启默认段'), len(defaults))
             return
         keycard = self._initial_keycard_selection(spawns, rooms)
         self._write_settings(self._initial_selection(spawns), keycard)
@@ -755,7 +803,7 @@ class BagelRouteStore:
                 active[spawn.spawn_id] = route.ref
             else:
                 active[spawn.spawn_id] = None
-        log.info('贝果路线：首次使用，按出生点清单初始化开启选择')
+        log.info(tr('贝果路线：首次使用，按出生点清单初始化开启选择'))
         return active
 
     # ---------- 内部 ----------
@@ -769,27 +817,35 @@ class BagelRouteStore:
         if route.is_room_segment and route.keycard is not None:
             room = next((item for item in self.load_rooms() if item.room_id == route.keycard.room_id), None)
             if room is None:
-                raise BagelRouteConfigError(f'房间段所属房间未登记：{route.keycard.room_id}')
+                raise BagelRouteConfigError(
+                tr('房间段所属房间未登记：{room_id}').format(room_id=route.keycard.room_id)
+            )
             return room.as_spawn()
         spawn = next((item for item in self.load_spawns() if item.spawn_id == route.spawn_id), None)
         if spawn is None:
-            raise BagelRouteConfigError(f'路线绑定的出生点未登记：{route.spawn_id}')
+            raise BagelRouteConfigError(
+                tr('路线绑定的出生点未登记：{spawn_id}').format(spawn_id=route.spawn_id)
+            )
         return spawn
 
     def _route_path(self, ref: BagelRouteRef) -> Path:
         """引用对应的文件路径；标识不合法时拒绝。"""
         if ref.source == SOURCE_CUSTOM:
             if not CUSTOM_ID_PATTERN.match(ref.route_id):
-                raise BagelRouteConfigError(f'自定义路线标识不合法：{ref.route_id}')
+                raise BagelRouteConfigError(
+                tr('自定义路线标识不合法：{route_id}').format(route_id=ref.route_id)
+            )
             return self.custom_dir / f'{ref.route_id}{ROUTE_SUFFIX}'
         if any(ch in ref.route_id for ch in '\\/:*?"<>|') or ref.route_id in ('.', '..'):
-            raise BagelRouteConfigError(f'默认路线标识不合法：{ref.route_id}')
+            raise BagelRouteConfigError(
+                tr('默认路线标识不合法：{route_id}').format(route_id=ref.route_id)
+            )
         return self.sample_dir / f'{ref.route_id}{SAMPLE_SUFFIX}'
 
     def _custom_ref(self, route_id: str) -> BagelRouteRef:
         """把标识当作自定义路线引用；默认路线或非法标识一律拒绝写入。"""
         if not CUSTOM_ID_PATTERN.match(route_id):
-            raise BagelRouteConfigError('默认路线只读，复制后再修改')
+            raise BagelRouteConfigError(tr('默认路线只读，复制后再修改'))
         return BagelRouteRef(SOURCE_CUSTOM, route_id)
 
     def _read_route(self, path: Path, source: str) -> BagelRoute:
@@ -797,15 +853,15 @@ class BagelRouteStore:
         route = BagelRoute.from_dict(json.loads(path.read_text(encoding='utf-8')), source)
         suffix = SAMPLE_SUFFIX if source == SOURCE_DEFAULT else ROUTE_SUFFIX
         if path.name != f'{route.route_id}{suffix}':
-            raise ValueError(f'文件名与路线标识 {route.route_id} 不一致')
+            raise ValueError(tr('文件名与路线标识 {route_id} 不一致').format(route_id=route.route_id))
         if source == SOURCE_CUSTOM and not CUSTOM_ID_PATTERN.match(route.route_id):
-            raise ValueError(f'自定义路线标识不合法：{route.route_id}')
+            raise ValueError(tr('自定义路线标识不合法：{route_id}').format(route_id=route.route_id))
         return route
 
     def _write_route(self, route: BagelRoute) -> None:
         """写入自定义路线：同目录临时文件写入、读回核对后替换。"""
         if route.source != SOURCE_CUSTOM:
-            raise BagelRouteConfigError('默认路线只读，复制后再修改')
+            raise BagelRouteConfigError(tr('默认路线只读，复制后再修改'))
         path = self._route_path(route.ref)
         text = json.dumps(route.to_dict(), ensure_ascii=False, indent=1)
 
@@ -813,7 +869,9 @@ class BagelRouteStore:
             reloaded = BagelRoute.from_dict(json.loads(tmp.read_text(encoding='utf-8')), SOURCE_CUSTOM)
             if len(reloaded.points) != len(route.points):
                 raise ValueError(
-                    f'读回点数不一致：写入 {len(route.points)}，读回 {len(reloaded.points)}',
+                    tr('读回点数不一致：写入 {written}，读回 {reloaded}').format(
+                        written=len(route.points), reloaded=len(reloaded.points),
+                    ),
                 )
 
         _atomic_write(path, text, check)
@@ -828,13 +886,13 @@ class BagelRouteStore:
         try:
             data = yaml.safe_load(self.settings_path.read_text(encoding='utf-8'))
             if not isinstance(data, dict) or data.get('version') != SETTINGS_VERSION:
-                raise ValueError('格式或版本不正确')
+                raise ValueError(tr('格式或版本不正确'))
             raw = data.get('active_routes') or {}
             if not isinstance(raw, dict):
-                raise ValueError('active_routes 不是映射')
+                raise ValueError(tr('active_routes 不是映射'))
             raw_keycard = data.get('keycard_routes') or {}
             if not isinstance(raw_keycard, dict):
-                raise ValueError('keycard_routes 不是映射')
+                raise ValueError(tr('keycard_routes 不是映射'))
             active = {
                 str(spawn_id): None if value is None else BagelRouteRef.from_json(value)
                 for spawn_id, value in raw.items()
@@ -846,7 +904,9 @@ class BagelRouteStore:
             return active, keycard
         except (OSError, yaml.YAMLError, ValueError) as error:
             raise BagelRouteConfigError(
-                f'路线开启配置 {self.settings_path.name} 已损坏：{error}',
+                tr('路线开启配置 {name} 已损坏：{error}').format(
+                    name=self.settings_path.name, error=error,
+                ),
             ) from error
 
     def _write_settings(
@@ -866,7 +926,7 @@ class BagelRouteStore:
 
         def check(tmp: Path) -> None:
             if yaml.safe_load(tmp.read_text(encoding='utf-8')) != data:
-                raise ValueError('读回内容不一致')
+                raise ValueError(tr('读回内容不一致'))
 
         _atomic_write(self.settings_path, text, check)
 
@@ -884,7 +944,7 @@ class BagelRouteStore:
         """校验名称合法且不与其他路线重名。"""
         name = validate_route_name(name)
         if any(route.name == name and route.ref != ignore for route in catalog.routes):
-            raise ValueError(f'已经有同名路线：{name}')
+            raise ValueError(tr('已经有同名路线：{name}').format(name=name))
         return name
 
 
@@ -907,4 +967,4 @@ def _atomic_write(path: Path, text: str, check: Any) -> None:
         os.replace(tmp, path)
     except (OSError, ValueError, yaml.YAMLError) as error:
         tmp.unlink(missing_ok=True)
-        raise BagelRouteConfigError(f'写入 {path.name} 失败：{error}') from error
+        raise BagelRouteConfigError(tr('写入 {name} 失败：{error}').format(name=path.name, error=error)) from error

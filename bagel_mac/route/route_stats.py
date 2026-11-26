@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from .route_model import BagelRoute
     from .route_store import BagelRouteCatalog
+from ..i18n import tr
 
 RECORD_VERSION: int = 1
 """记录格式版本；字段含义变化时递增。"""
@@ -90,11 +91,11 @@ class BagelRouteRecord:
             ValueError: 版本不对或字段缺失。
         """
         if not isinstance(data, dict) or data.get('version') != RECORD_VERSION:
-            raise ValueError('不支持的记录版本')
+            raise ValueError(tr('不支持的记录版本'))
         try:
             return cls(**{name: data[name] for name in cls.__dataclass_fields__})
         except (KeyError, TypeError) as error:
-            raise ValueError(f'记录字段缺失：{error}') from error
+            raise ValueError(tr('记录字段缺失：{v0}').format(v0=error)) from error
 
 
 class BagelRouteRecorder:
@@ -122,7 +123,7 @@ class BagelRouteRecorder:
             with self.path().open('a', encoding='utf-8') as file:
                 file.write(line + '\n')
         except (OSError, TypeError, ValueError):
-            log.warning('写入贝果路线数据记录失败，本局不计入路线汇总', exc_info=True)
+            log.warning(tr('写入贝果路线数据记录失败，本局不计入路线汇总'), exc_info=True)
 
     def prune(self, now: datetime | None = None) -> None:
         """删除保留期以前的记录和无法读取的行；没有要删的行时不改文件。
@@ -141,9 +142,9 @@ class BagelRouteRecorder:
             tmp = path.with_suffix('.tmp')
             tmp.write_text(''.join(f'{line}\n' for line in kept), encoding='utf-8')
             tmp.replace(path)
-            log.info('贝果路线数据：删除 %s 条过期或无法读取的记录', len(lines) - len(kept))
+            log.info(tr('贝果路线数据：删除 %s 条过期或无法读取的记录'), len(lines) - len(kept))
         except OSError:
-            log.warning('清理贝果路线数据记录失败', exc_info=True)
+            log.warning(tr('清理贝果路线数据记录失败'), exc_info=True)
 
     def load(self, now: datetime | None = None) -> list[BagelRouteRecord]:
         """读取保留期内的记录；跳过无法读取的行。
@@ -157,7 +158,7 @@ class BagelRouteRecorder:
                 return []
             lines = path.read_text(encoding='utf-8').splitlines()
         except OSError:
-            log.warning('读取贝果路线数据记录失败', exc_info=True)
+            log.warning(tr('读取贝果路线数据记录失败'), exc_info=True)
             return []
         cutoff = self._cutoff(now)
         return [record for line in lines if (record := self._parse(line, cutoff)) is not None]

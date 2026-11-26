@@ -39,6 +39,7 @@ from qfluentwidgets import (
 )
 
 from ..defs import PLUGIN_DIR
+from ..i18n import tr, web_bootstrap_script
 from ..route.route_model import (
     KIND_COLORS,
     POINT_KINDS,
@@ -192,7 +193,7 @@ class BagelRouteEditor(QDialog):
 
         self._previous_theme: Theme = enter_light_theme()
         apply_light_palette(self)
-        self.setWindowTitle('贝果路线编辑器')
+        self.setWindowTitle(tr('贝果路线编辑器'))
         self.resize(1360, 820)
         self._build_ui()
 
@@ -222,8 +223,8 @@ class BagelRouteEditor(QDialog):
             )
             layout.addWidget(_KeyName(label, holder))
         layout.addSpacing(8)
-        layout.addWidget(_KeyCap(UNDO_KEY_LABEL, holder))
-        layout.addWidget(_KeyName('删上一个点', holder))
+        layout.addWidget(_KeyCap(tr(UNDO_KEY_LABEL), holder))
+        layout.addWidget(_KeyName(tr('删上一个点'), holder))
         return holder
 
     def _build_ui(self) -> None:
@@ -238,21 +239,21 @@ class BagelRouteEditor(QDialog):
         bar_layout.setContentsMargins(16, 8, 16, 8)
         bar_layout.setSpacing(8)
 
-        self.create_button: PrimaryPushButton = PrimaryPushButton('新增路线', bar)
+        self.create_button: PrimaryPushButton = PrimaryPushButton(tr('新增路线'), bar)
         self.create_button.clicked.connect(lambda: self._run_js('window.bagelEditor.openCreate();'))
         bar_layout.addWidget(self.create_button)
-        self.start_button: PushButton = PushButton('录制路线', bar)
+        self.start_button: PushButton = PushButton(tr('录制路线'), bar)
         self.start_button.clicked.connect(lambda: self._run_js('window.bagelEditor.openRecord();'))
         bar_layout.addWidget(self.start_button)
-        self.manage_button: PushButton = PushButton('路线管理', bar)
+        self.manage_button: PushButton = PushButton(tr('路线管理'), bar)
         self.manage_button.clicked.connect(lambda: self._run_js('window.bagelEditor.openManage();'))
         bar_layout.addWidget(self.manage_button)
-        self.stop_button: PushButton = PushButton('停止录制', bar)
+        self.stop_button: PushButton = PushButton(tr('停止录制'), bar)
         self.stop_button.setEnabled(False)
         self.stop_button.clicked.connect(self._stop_recording)
         bar_layout.addWidget(self.stop_button)
         bar_layout.addSpacing(12)
-        self.status_label: BodyLabel = BodyLabel('就绪', bar)
+        self.status_label: BodyLabel = BodyLabel(tr('就绪'), bar)
         # 状态文字长短不定：允许被截断，不按全文宽度撑大窗口。
         self.status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.status_label.setMinimumWidth(0)
@@ -282,13 +283,15 @@ class BagelRouteEditor(QDialog):
     def _load_page(self) -> None:
         """把页面载入并指定 baseUrl，让页面读到插件自带的底图。"""
         html = (WEB_DIR / 'index.html').read_text(encoding='utf-8')
+        # 词典随页面注入，网页里的 t() 按当前语言翻译；中文注入空词典回退原文。
+        html = html.replace('<!--BAGEL_I18N-->', web_bootstrap_script(), 1)
         base = QUrl.fromLocalFile(str(WEB_DIR.parent) + '/')
         self.view.setHtml(html, base)
 
     def _on_page_loaded(self, ok: bool) -> None:
         """页面载入完成后推一次数据。"""
         if not ok:
-            self.status_label.setText('页面载入失败')
+            self.status_label.setText(tr('页面载入失败'))
             return
         self._page_ready = True
         self._push_data()
@@ -337,8 +340,8 @@ class BagelRouteEditor(QDialog):
             if catalog.errors:
                 self.status_label.setText('；'.join(catalog.errors))
         except BagelRouteConfigError as error:
-            log.error('读取贝果路线配置失败：%s', error)
-            self.status_label.setText(f'路线配置无法使用：{error}')
+            log.error(tr('读取贝果路线配置失败：%s'), error)
+            self.status_label.setText(tr('路线配置无法使用：{error}').format(error=error))
             try:
                 spawns = self.store.load_spawns()
             except BagelRouteConfigError:
@@ -369,13 +372,13 @@ class BagelRouteEditor(QDialog):
     def _busy_reason(self) -> str | None:
         """录制、试跑、定位进行中时拒绝会改变数据或占用游戏的命令。"""
         if self._closing:
-            return '正在关闭编辑器'
+            return tr('正在关闭编辑器')
         if self.recorder is not None:
-            return '正在录制，请先停止录制'
+            return tr('正在录制，请先停止录制')
         if self.test_thread is not None:
-            return '正在试跑，请等试跑结束'
+            return tr('正在试跑，请等试跑结束')
         if self.locate_thread is not None:
-            return '定位还在进行'
+            return tr('定位还在进行')
         return None
 
     def _on_command(self, cmd: str, payload: str) -> None:
@@ -388,7 +391,7 @@ class BagelRouteEditor(QDialog):
         try:
             args = json.loads(payload)
         except json.JSONDecodeError:
-            log.error('贝果路线编辑器收到无法解析的命令 %s', cmd)
+            log.error(tr('贝果路线编辑器收到无法解析的命令 %s'), cmd)
             return
         request_id = args.get('request_id')
         if cmd == 'close':
@@ -399,18 +402,18 @@ class BagelRouteEditor(QDialog):
         if cmd == 'copy_text':
             text = str(args.get('text') or '')
             QApplication.clipboard().setText(text)
-            self._reply(request_id, True, f'已复制 {text}')
+            self._reply(request_id, True, tr('已复制 {text}').format(text=text))
             return
         if cmd == 'track_stop':
             self._stop_track()
-            self._reply(request_id, True, '正在停止定位')
+            self._reply(request_id, True, tr('正在停止定位'))
             return
         busy = self._busy_reason()
         if busy is not None:
             self._reply(request_id, False, busy)
             return
         if self.track_thread is not None and cmd in ('record', 'test', 'locate', 'track_start'):
-            self._reply(request_id, False, '正在持续定位，请先停止定位')
+            self._reply(request_id, False, tr('正在持续定位，请先停止定位'))
             return
         handlers = {
             'save': self._cmd_save,
@@ -427,12 +430,12 @@ class BagelRouteEditor(QDialog):
         }
         handler = handlers.get(cmd)
         if handler is None:
-            self._reply(request_id, False, f'不支持的命令：{cmd}')
+            self._reply(request_id, False, tr('不支持的命令：{cmd}').format(cmd=cmd))
             return
         try:
             message, data = handler(args)
         except (BagelRouteConfigError, ValueError, KeyError, TypeError) as error:
-            log.warning('贝果路线编辑器命令 %s 失败：%s', cmd, error)
+            log.warning(tr('贝果路线编辑器命令 %s 失败：%s'), cmd, error)
             self._push_data()
             self._reply(request_id, False, str(error))
             return
@@ -443,11 +446,11 @@ class BagelRouteEditor(QDialog):
         """保存自定义路线的节点草稿；默认路线由存储模块拒绝。"""
         raw = args['points']
         if not isinstance(raw, list):
-            raise ValueError('点位不是数组')
+            raise ValueError(tr('点位不是数组'))
         points = [BagelRoutePoint.from_dict(item) for item in raw]
         route = self.store.save_custom_route(str(args['route_id']), points)
-        log.info('贝果路线「%s」已保存 %s 点', route.name, len(points))
-        return f'已保存「{route.name}」· {len(points)} 点', None
+        log.info(tr('贝果路线「%s」已保存 %s 点'), route.name, len(points))
+        return tr('已保存「{name}」· {count} 点').format(name=route.name, count=len(points)), None
 
     def _cmd_activate(self, args: dict[str, Any]) -> tuple[str, Any]:
         """设置出生点当前开启的路线；ref 为 null 表示关闭。"""
@@ -458,11 +461,11 @@ class BagelRouteEditor(QDialog):
         spawn = catalog.spawn(spawn_id)
         name = spawn.name if spawn is not None else spawn_id
         if ref is None:
-            log.info('贝果出生点 %s 已关闭全部路线', name)
-            return f'{name}已关闭路线，抽到时退出重开', None
+            log.info(tr('贝果出生点 %s 已关闭全部路线'), name)
+            return tr('{name}已关闭路线，抽到时退出重开').format(name=name), None
         route = catalog.route(ref)
-        log.info('贝果出生点 %s 开启路线 %s', name, ref)
-        return f'{name}已开启「{route.name if route else ref.route_id}」', None
+        log.info(tr('贝果出生点 %s 开启路线 %s'), name, ref)
+        return tr('{name}已开启「{route}」').format(name=name, route=route.name if route else ref.route_id), None
 
     def _cmd_activate_keycard(self, args: dict[str, Any]) -> tuple[str, Any]:
         """设置房间的开房卡开启选择：spawn_id 为 null 表示房间段，否则为该出生点的入口段。"""
@@ -474,14 +477,16 @@ class BagelRouteEditor(QDialog):
         room = catalog.room(room_id)
         room_name = room.name if room is not None else room_id
         spawn = catalog.spawn(spawn_id) if spawn_id is not None else None
-        where = f'{room_name}的房间段' if spawn_id is None else (
-            f'{spawn.name if spawn else spawn_id}去{room_name}的入口段'
+        where = tr('{name}的房间段').format(name=room_name) if spawn_id is None else (
+            tr('{spawn}去{room}的入口段').format(
+                spawn=spawn.name if spawn else spawn_id, room=room_name,
+            )
         )
-        log.info('贝果开房卡 %s 设为 %s', where, ref)
+        log.info(tr('贝果开房卡 %s 设为 %s'), where, ref)
         if ref is None:
-            return f'已关闭{where}', None
+            return tr('已关闭{where}').format(where=where), None
         route = catalog.route(ref)
-        return f'{where}已开启「{route.name if route else ref.route_id}」', None
+        return tr('{where}已开启「{route}」').format(where=where, route=route.name if route else ref.route_id), None
 
     def _cmd_create(self, args: dict[str, Any]) -> tuple[str, Any]:
         """新增一条自定义路线，首点取出生点坐标；房间段取房间入口坐标。"""
@@ -489,28 +494,28 @@ class BagelRouteEditor(QDialog):
             str(args['name']), str(args.get('spawn_id') or ''), activate=bool(args.get('activate')),
             keycard=_keycard_arg(args),
         )
-        log.info('贝果新增自定义路线「%s」（%s）', route.name, route.ref)
-        return f'已新增「{route.name}」', route.ref.to_json()
+        log.info(tr('贝果新增自定义路线「%s」（%s）'), route.name, route.ref)
+        return tr('已新增「{name}」').format(name=route.name), route.ref.to_json()
 
     def _cmd_copy(self, args: dict[str, Any]) -> tuple[str, Any]:
         """复制路线为新的自定义路线，副本关闭。"""
         source = BagelRouteRef.from_json(args['ref'])
         route = self.store.copy_route(source, str(args['name']))
-        log.info('贝果路线 %s 已复制为「%s」（%s）', source, route.name, route.ref)
-        return f'已复制为「{route.name}」，副本未开启', route.ref.to_json()
+        log.info(tr('贝果路线 %s 已复制为「%s」（%s）'), source, route.name, route.ref)
+        return tr('已复制为「{name}」，副本未开启').format(name=route.name), route.ref.to_json()
 
     def _cmd_rename(self, args: dict[str, Any]) -> tuple[str, Any]:
         """修改自定义路线的显示名称。"""
         route = self.store.rename_custom_route(str(args['route_id']), str(args['name']))
-        log.info('贝果路线 %s 改名为「%s」', route.ref, route.name)
-        return f'已改名为「{route.name}」', None
+        log.info(tr('贝果路线 %s 改名为「%s」').name)
+        return tr('已改名为「{name}」').format(name=route.name), None
 
     def _cmd_delete(self, args: dict[str, Any]) -> tuple[str, Any]:
         """删除自定义路线；开启中的先关闭。"""
         route_id = str(args['route_id'])
         self.store.delete_custom_route(route_id)
-        log.info('贝果自定义路线 %s 已删除', route_id)
-        return '已删除路线', None
+        log.info(tr('贝果自定义路线 %s 已删除'), route_id)
+        return tr('已删除路线'), None
 
     def _cmd_record(self, args: dict[str, Any]) -> tuple[str, Any]:
         """开始录制一条自定义路线；房间段的首点对齐房间入口，其余对齐出生点。"""
@@ -521,20 +526,20 @@ class BagelRouteEditor(QDialog):
         if keycard is not None and keycard.segment == SEGMENT_ROOM:
             room = catalog.room(keycard.room_id)
             if room is None:
-                raise ValueError('请选择房间')
+                raise ValueError(tr('请选择房间'))
             spawn = room.as_spawn()
         else:
             spawn = catalog.spawn(str(args.get('spawn_id') or ''))
             if spawn is None:
-                raise ValueError('请选择出生点')
+                raise ValueError(tr('请选择出生点'))
             if keycard is not None and catalog.room(keycard.room_id) is None:
-                raise ValueError('请选择房间')
+                raise ValueError(tr('请选择房间'))
         if not name:
-            raise ValueError('路线名称不能为空')
+            raise ValueError(tr('路线名称不能为空'))
         if any(route.name == name for route in catalog.routes):
-            raise ValueError(f'已经有同名路线：{name}')
+            raise ValueError(tr('已经有同名路线：{name}').format(name=name))
         self._start_recording(name, spawn, bool(args.get('activate')), keycard)
-        return f'正在准备录制「{name}」', None
+        return tr('正在准备录制「{name}」').format(name=name), None
 
     def _cmd_test(self, args: dict[str, Any]) -> tuple[str, Any]:
         """试跑一条路线；关闭的路线也可以试跑。"""
@@ -542,18 +547,18 @@ class BagelRouteEditor(QDialog):
         # 先按试跑方式读一遍：入口段要接得上房间段，问题在这里直接报给网页。
         route = self.store.trial_route(ref)
         self._start_test(self.store.load_route(ref))
-        return f'正在切到游戏，准备试跑「{route.name}」', None
+        return tr('正在切到游戏，准备试跑「{name}」').format(name=route.name), None
 
     def _cmd_locate(self, args: dict[str, Any]) -> tuple[str, Any]:
         """切到游戏定位一次，结果写进网页草稿。"""
         index = int(args['index'])
         self._start_locate(index)
-        return f'正在切到游戏定位第 {index + 1} 点…', None
+        return tr('正在切到游戏定位第 {n} 点…').format(n=index + 1), None
 
     def _cmd_track_start(self, args: dict[str, Any]) -> tuple[str, Any]:
         """打开地图工具栏的「定位」开关：切到游戏持续定位，坐标推给网页显示。"""
         self._start_track()
-        return '正在切到游戏定位…', None
+        return tr('正在切到游戏定位…'), None
 
     # ---------- 持续定位 ----------
 
@@ -711,7 +716,7 @@ class BagelRouteEditor(QDialog):
     def _on_test_done(self, success: bool, message: str) -> None:
         """试跑结束显示结论。"""
         self.status_label.setText(message)
-        log.info('贝果路线试跑结束：%s', message)
+        log.info(tr('贝果路线试跑结束：%s'), message)
 
     def _clear_test_thread(self) -> None:
         """线程退出后清引用，允许再次试跑。"""
@@ -752,7 +757,7 @@ class BagelRouteEditor(QDialog):
         self._set_buttons()
         self._call_js('startRecording', name)
         self.overlay = BagelRecordOverlay()
-        self.overlay.set_lines(['定位中...'])
+        self.overlay.set_lines([tr('定位中...')])
         self.overlay.set_recording(True)
         self._overlay_timer.start()
 
@@ -774,7 +779,7 @@ class BagelRouteEditor(QDialog):
         if self.recorder is None:
             return
         self.stop_button.setEnabled(False)
-        self.status_label.setText('正在停止并保存…')
+        self.status_label.setText(tr('正在停止并保存…'))
         self.recorder.request_stop()
 
     def _on_point(self, point: BagelRoutePoint) -> None:
@@ -816,7 +821,7 @@ class BagelRouteEditor(QDialog):
                         self.overlay.add_point(
                             (point.x - origin[0], point.y - origin[1]), point.kind,
                         )
-        log.info('贝果路线录制命中分层 %s（%s）', layer_name, image_path.name)
+        log.info(tr('贝果路线录制命中分层 %s（%s）').name)
 
     def _on_position(self, local_xy: tuple[float, float] | None) -> None:
         """把当前位置推给网页与悬浮窗；层名用最近一次命中层。"""
@@ -847,21 +852,29 @@ class BagelRouteEditor(QDialog):
         layer = stats.get('layer')
         if center is None or score is None or layer is None:
             self.overlay.set_lines([
-                '未找到匹配地图',
-                f'定位 {stats.get("locate_ms", 0.0):.1f}ms',
+                tr('未找到匹配地图'),
+                tr('定位 {ms}ms').format(ms=f'{stats.get("locate_ms", 0.0):.1f}'),
             ])
             return
         sector = self.overlay.sector_angle
         marker = self.overlay.marker_angle
         self.overlay.set_lines([
             f'{layer}  ({center[0]}, {center[1]})',
-            f'扇形 {_fmt_angle(sector)}  菱形 {_fmt_angle(marker)}',
-            f'匹配分 {score:.3f}  {stats.get("fps", 0.0):.0f} FPS',
-            f'单帧最大偏移 {stats.get("step_max", 0.0):.0f}px'
-            f'/{stats.get("window_span", 0.0):.2f}s',
-            f'延迟 {stats.get("total_ms", 0.0):.0f}ms'
-            f'  定位 {stats.get("locate_ms", 0.0):.1f}ms'
-            f'  朝向 {stats.get("angle_ms", 0.0):.1f}ms',
+            tr('扇形 {sector}  菱形 {marker}').format(
+                sector=_fmt_angle(sector), marker=_fmt_angle(marker),
+            ),
+            tr('匹配分 {score}  {fps} FPS').format(
+                score=f'{score:.3f}', fps=f'{stats.get("fps", 0.0):.0f}',
+            ),
+            tr('单帧最大偏移 {step_max}px/{span}s').format(
+                step_max=f'{stats.get("step_max", 0.0):.0f}',
+                span=f'{stats.get("window_span", 0.0):.2f}',
+            ),
+            tr('延迟 {total}ms  定位 {locate}ms  朝向 {angle}ms').format(
+                total=f'{stats.get("total_ms", 0.0):.0f}',
+                locate=f'{stats.get("locate_ms", 0.0):.1f}',
+                angle=f'{stats.get("angle_ms", 0.0):.1f}',
+            ),
         ])
 
     def _sync_overlay(self) -> None:
@@ -887,9 +900,9 @@ class BagelRouteEditor(QDialog):
         self._push_data()
         self._call_js('stopRecording', saved.ref.to_json() if saved is not None else None)
         if saved is not None:
-            log.info('贝果路线录制保存为「%s」（%s），%s 点', saved.name, saved.ref, len(saved.points))
+            log.info(tr('贝果路线录制保存为「%s」（%s），%s 点'), saved.name, saved.ref, len(saved.points))
         else:
-            log.info('贝果路线录制未保存：%s', message)
+            log.info(tr('贝果路线录制未保存：%s'), message)
         self._close_if_pending()
 
     def closeEvent(self, event: Any) -> None:
@@ -937,7 +950,7 @@ class BagelRouteEditor(QDialog):
             return False
         if not self._closing:
             self._closing = True
-            self.status_label.setText('正在停止后台任务，结束后自动关闭编辑器…')
+            self.status_label.setText(tr('正在停止后台任务，结束后自动关闭编辑器…'))
             if self.recorder is not None:
                 self.recorder.request_stop()
             if self.test_thread is not None:
@@ -956,7 +969,7 @@ class BagelRouteEditor(QDialog):
     def _on_close_requested(self, result: object) -> None:
         """网页脚本出错没有接手关闭时直接关闭，避免窗口关不掉。"""
         if result is not True:
-            log.warning('贝果路线编辑器网页未响应关闭请求，直接关闭')
+            log.warning(tr('贝果路线编辑器网页未响应关闭请求，直接关闭'))
             self._close_confirmed = True
             self.close()
 
@@ -986,7 +999,7 @@ def _layer_origins() -> dict[str, tuple[int, int]]:
             locator.name: locator.origin for locator in load_map_locators()
         }
     except (OSError, ValueError) as error:
-        log.warning('读取分层偏移失败，悬浮窗不画点：%s', error)
+        log.warning(tr('读取分层偏移失败，悬浮窗不画点：%s'), error)
         return {}
 
 

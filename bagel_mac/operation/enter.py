@@ -18,6 +18,7 @@ from ..defs import (
     MAP_OUTSKIRTS,
     RECOMMENDED_VALUE,
 )
+from ..i18n import tr
 from ..vision.screen import (
     complete_containers,
     empty_capacity,
@@ -185,18 +186,18 @@ class BagelEnter(BagelOperation):
             timer = read_area(self.ctx, self.last_screenshot, '贝果-局内', '计时')
             # 七段数字截图中冒号可被 OCR 读成 1；与普通攻击共同识别局内画面。
             if re.fullmatch(r'\d{1,2}[:：1]\d{2}(?:[.:：]\d{1,2})?', timer.replace(' ', '')) is None:
-                return self.round_fail(f'当前战斗画面不能确认为贝果（计时：{timer}），停止并保留现场')
+                return self.round_fail('当前战斗画面不能确认为贝果（计时：{v0}），停止并保留现场'.format(v0=timer))
             return self._exit_starting_game()
         return self.round_success()
 
     def _exit_starting_game(self) -> OperationRoundResult:
         """复用正常退出，子操作结束后的新截图交给下一节点处理仓库。"""
-        log.info('贝果启动恢复：正常退出遗留局，仅保留安全箱，不续原路线')
+        log.info(tr('贝果启动恢复：正常退出遗留局，仅保留安全箱，不续原路线'))
         result = BagelExit(self.ctx).execute()
         self.screenshot()
         if not result.success:
             return self.round_by_op_result(result)
-        log.info('贝果启动恢复：已到结算仓库，转存不计成功、出售间隔或失败重试')
+        log.info(tr('贝果启动恢复：已到结算仓库，转存不计成功、出售间隔或失败重试'))
         return self.round_success()
 
     @node_from(from_name='恢复启动贝果局')
@@ -205,7 +206,7 @@ class BagelEnter(BagelOperation):
         """首次启动恢复仓库遗留物，包括上次清空途中停下的备战仓库。"""
         sale_state = warehouse_sale_state(self.ctx, self.last_screenshot)
         if sale_state is not None:
-            return self.round_fail(f'检测到仓库出售状态（{sale_state}），停止并保留现场')
+            return self.round_fail('检测到仓库出售状态（{v0}），停止并保留现场'.format(v0=sale_state))
         if not self.round_by_find_area(self.last_screenshot, '贝果-仓库', '放入仓库').is_success:
             return self.round_success()
         if not self.allow_clear_loadout:
@@ -234,7 +235,7 @@ class BagelEnter(BagelOperation):
         """已转存的非结算仓库回上一页，重新识别后再执行选图核验。"""
         sale_state = warehouse_sale_state(self.ctx, self.last_screenshot)
         if sale_state is not None:
-            return self.round_fail(f'检测到仓库出售状态（{sale_state}），停止并保留现场')
+            return self.round_fail('检测到仓库出售状态（{v0}），停止并保留现场'.format(v0=sale_state))
         if self.round_by_find_area(self.last_screenshot, '贝果-备战', '预设组合').is_success:
             return self.round_success()
         if self._at_main_page():
@@ -291,7 +292,7 @@ class BagelEnter(BagelOperation):
                 if not result.success:
                     return self.round_by_op_result(result)
                 return self.round_wait('已返回大世界，重新检查贝果入场', wait=0.5)
-            return self.round_fail(f'当前画面 {current or "未知"} 不支持自动进入贝果，已留现场')
+            return self.round_fail('当前画面 {v0} 不支持自动进入贝果，已留现场'.format(v0=current or "未知"))
         if current in {'仓库-材料道具', '仓库-音擎仓库', '仓库-驱动仓库'}:
             self.ctx.screen_loader.update_current_screen_name(current)
         return self.round_success('需要快捷手册入口')
@@ -348,7 +349,7 @@ class BagelEnter(BagelOperation):
         """每局读取实际选中地图；已正确则免点击，读数不明不操作。"""
         selected = read_area(self.ctx, self.last_screenshot, '贝果-选图', '选中地图')
         if selected == self.map_name:
-            return self.round_success(f'已核对{self.map_name}')
+            return self.round_success('已核对{v0}'.format(v0=self.map_name))
         if self.node_clicked or selected != self.other_map:
             return self.round_wait('等待核对选中地图', wait=0.25)
         result = self.round_by_find_and_click_area(
@@ -356,7 +357,7 @@ class BagelEnter(BagelOperation):
             pre_delay=0.15, retry_wait=0.25,
         )
         if result.is_success:
-            return self.round_wait(f'等待{self.map_name}选择生效', wait=0.25)
+            return self.round_wait('等待{v0}选择生效'.format(v0=self.map_name), wait=0.25)
         return result
 
     @node_from(from_name='选择地图')
@@ -369,12 +370,12 @@ class BagelEnter(BagelOperation):
         selected = read_area(self.ctx, self.last_screenshot, '贝果-选图', '选中地图')
         value = read_coin_value(self.ctx, self.last_screenshot, '贝果-选图', '推荐价值')
         if self.node_clicked or selected != self.map_name or not value.isdecimal():
-            return self.round_wait(f'等待核对{self.map_name}难度', wait=0.25)
+            return self.round_wait('等待核对{v0}难度'.format(v0=self.map_name), wait=0.25)
         result = self.round_by_find_and_click_area(
             self.last_screenshot, '贝果-选图', self.difficulty, pre_delay=0.15, retry_wait=0.25,
         )
         if result.is_success:
-            return self.round_wait(f'等待{self.difficulty}选择生效', wait=0.25)
+            return self.round_wait('等待{v0}选择生效'.format(v0=self.difficulty), wait=0.25)
         return result
 
     @node_from(from_name='选择难度')
@@ -408,8 +409,8 @@ class BagelEnter(BagelOperation):
         if not complete_containers(values) or None in states:
             self.loadout_misses += 1
             if self.loadout_misses < 5:
-                return self.round_wait(f'携带识别不完整，重新核对 {values}，槽位 {states}', wait=0.5)
-            return self.round_fail(f'无法完整识别携带，停止并保留现场 {values}，槽位 {states}')
+                return self.round_wait('携带识别不完整，重新核对 {v0}，槽位 {v1}'.format(v0=values, v1=states), wait=0.5)
+            return self.round_fail('无法完整识别携带，停止并保留现场 {v0}，槽位 {v1}'.format(v0=values, v1=states))
         self.loadout_misses = 0
         carrying = not zero_containers(values) or any(states)
         if carrying and self.allow_clear_loadout and not self.clear_attempted and not self.card_picked:
@@ -423,7 +424,7 @@ class BagelEnter(BagelOperation):
             if problem is not None:
                 return self.round_fail(problem)
         elif carrying:
-            return self.round_fail(f'无法确认零携带，请先清空武备、装备、道具、背包和安全箱；容器 {values}，槽位 {states}')
+            return self.round_fail('无法确认零携带，请先清空武备、装备、道具、背包和安全箱；容器 {v0}，槽位 {v1}'.format(v0=values, v1=states))
         result = self.round_by_find_and_click_area(self.last_screenshot, '贝果-备战', '前往空洞')
         if result.is_success:
             self.zero_checked = True
@@ -448,7 +449,7 @@ class BagelEnter(BagelOperation):
             return self.STATUS_NEED_CARD
         if pair[0] != 1:
             return f'开房卡只允许在安全箱放 1 张门禁卡，当前安全箱 {values.get("安全箱数量")}'
-        log.info('贝果开房卡：安全箱 %s，背包 %s，按带 1 张门禁卡入场', values.get('安全箱数量'), values.get('背包数量'))
+        log.info(tr('贝果开房卡：安全箱 %s，背包 %s，按带 1 张门禁卡入场'), values.get('安全箱数量'), values.get('背包数量'))
         return None
 
     @node_from(from_name='核对零携带', status=STATUS_NEED_CARD, ignore_status=False)
@@ -487,7 +488,7 @@ class BagelEnter(BagelOperation):
             return self.round_fail('尚未核对携带，禁止确认入场')
         if (not self.need_investment or self.investment_confirmed) and self.is_bagel_result():
             # 入场加载期间已经死亡也属于本局，让正式任务的出生检查进入失败结算。
-            return self.round_success(f'已进入{self.map_name}{self.difficulty}')
+            return self.round_success('已进入{v0}{v1}'.format(v0=self.map_name, v1=self.difficulty))
         # 开局会自动弹出局内大地图；识别后主动关闭，不空等约 30 秒自动关掉。
         if self.round_by_find_area(self.last_screenshot, '贝果-局内', '大地图图例').is_success:
             result = self.round_by_click_area('贝果-局内', '大地图返回')
@@ -496,8 +497,8 @@ class BagelEnter(BagelOperation):
             return self.round_retry('已识别开局大地图但未能关闭', wait=1)
         if self.round_by_find_area(self.last_screenshot, '战斗画面', '按键-普通攻击').is_success:
             if self.need_investment and not self.investment_confirmed:
-                return self.round_fail(f'未核对{self.difficulty}零投资，停止并保留现场')
-            return self.round_success(f'已进入{self.map_name}{self.difficulty}')
+                return self.round_fail('未核对{v0}零投资，停止并保留现场'.format(v0=self.difficulty))
+            return self.round_success('已进入{v0}{v1}'.format(v0=self.map_name, v1=self.difficulty))
         if self.round_by_find_area(self.last_screenshot, '贝果-入场确认', '投资标题').is_success:
             self._pending_warning = None
             if self.investment_confirmed:

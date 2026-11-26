@@ -14,6 +14,7 @@ from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
 from PySide6.QtCore import QThread, Signal
 
+from ..i18n import tr
 from ..route.route_recorder import (
     FOREGROUND_CHECK_INTERVAL,
     GAME_FOREGROUND_TIMEOUT,
@@ -45,13 +46,13 @@ def _game_target(ctx: ZContext) -> tuple[int, Rect] | str:
     """
     controller = ctx.controller
     if controller is None or not controller.init_game_win():
-        return '游戏窗口未就绪，请先启动游戏'
+        return tr('游戏窗口未就绪，请先启动游戏')
     hwnd = controller.game_win.get_hwnd()
     if hwnd is None or not controller.is_game_window_ready:
-        return '未找到游戏窗口，请先启动游戏'
+        return tr('未找到游戏窗口，请先启动游戏')
     area = ctx.screen_loader.get_area(*MINIMAP_AREA)
     if area is None:
-        return f'缺少画面区域：{MINIMAP_AREA[0]}/{MINIMAP_AREA[1]}'
+        return tr('缺少画面区域：{area}').format(area=f'{MINIMAP_AREA[0]}/{MINIMAP_AREA[1]}')
     return hwnd, area.pc_rect
 
 
@@ -78,8 +79,8 @@ class BagelLocateThread(QThread):
         try:
             self._locate_once()
         except Exception as error:
-            log.error('贝果单次定位异常', exc_info=True)
-            self.done.emit(False, f'定位异常：{error}', '', None)
+            log.error(tr('贝果单次定位异常'), exc_info=True)
+            self.done.emit(False, tr('定位异常：{error}').format(error=error), '', None)
 
     def _locate_once(self) -> None:
         """截一帧小地图，定位一次，把层名与层内坐标交回去。"""
@@ -90,34 +91,33 @@ class BagelLocateThread(QThread):
         hwnd, rect = target
         controller = self.ctx.controller
 
-        self.status_changed.emit('正在切到游戏定位')
+        self.status_changed.emit(tr('正在切到游戏定位'))
         controller.active_window()
         if not wait_foreground(hwnd, GAME_FOREGROUND_TIMEOUT):
-            self.done.emit(False, '游戏窗口未切到前台，未定位', '', None)
+            self.done.emit(False, tr('游戏窗口未切到前台，未定位'), '', None)
             return
 
         screenshot = controller.get_screenshot()
         if screenshot is None:
-            self.done.emit(False, '截图失败，未定位', '', None)
+            self.done.emit(False, tr('截图失败，未定位'), '', None)
             return
         crop = self._crop(screenshot, rect)
         if crop is None:
-            self.done.emit(False, '小地图裁剪为空，未定位', '', None)
+            self.done.emit(False, tr('小地图裁剪为空，未定位'), '', None)
             return
 
         locators = load_map_locators()
         result = MultiMapLocator(locators).locate(crop)
         if result is None:
-            self.done.emit(False, '这一帧没定位到，可能不在贝果局内', '', None)
+            self.done.emit(False, tr('这一帧没定位到，可能不在贝果局内'), '', None)
             return
         locator, score, center = result
         # 路线里的点存的是全局坐标（打点时写的就是 center），所以这里也回全局坐标。
         global_xy = (float(center[0]), float(center[1]))
-        message = (
-            f'{locator.name} · 坐标 ({global_xy[0]:.0f}, {global_xy[1]:.0f})'
-            f' · 匹配 {score:.2f}'
-        )
-        log.info('贝果单次定位：%s', message)
+        message = tr('{name} · 坐标 ({x}, {y})').format(
+            name=locator.name, x=f'{global_xy[0]:.0f}', y=f'{global_xy[1]:.0f}',
+        ) + tr(' · 匹配 {score}').format(score=f'{score:.2f}')
+        log.info(tr('贝果单次定位：%s'), message)
         self.done.emit(True, message, locator.name, global_xy)
 
     @staticmethod
@@ -173,8 +173,8 @@ class BagelTrackThread(QThread):
         try:
             self._track()
         except Exception as error:
-            log.error('贝果持续定位异常', exc_info=True)
-            self.done.emit(False, f'定位异常：{error}')
+            log.error(tr('贝果持续定位异常'), exc_info=True)
+            self.done.emit(False, tr('定位异常：{error}').format(error=error))
 
     def _track(self) -> None:
         """切到游戏，循环截小地图定位，把结果逐次交回去。"""
@@ -186,15 +186,15 @@ class BagelTrackThread(QThread):
         controller = self.ctx.controller
 
         locator = MultiMapLocator(load_map_locators())
-        self.status_changed.emit('正在切到游戏定位')
+        self.status_changed.emit(tr('正在切到游戏定位'))
         controller.active_window()
         if not wait_foreground(hwnd, GAME_FOREGROUND_TIMEOUT, self._stop):
             if self._stop.is_set():
-                self.done.emit(True, '定位已停止')
+                self.done.emit(True, tr('定位已停止'))
             else:
-                self.done.emit(False, '游戏窗口未切到前台，未开始定位')
+                self.done.emit(False, tr('游戏窗口未切到前台，未开始定位'))
             return
-        self.status_changed.emit('持续定位中；切回编辑器后暂停，点「停止定位」结束')
+        self.status_changed.emit(tr('持续定位中；切回编辑器后暂停，点「停止定位」结束'))
 
         while not self._stop.is_set():
             if not is_foreground(hwnd):
@@ -207,4 +207,4 @@ class BagelTrackThread(QThread):
                 hit, _score, center = result
                 self.position_changed.emit(hit.name, (float(center[0]), float(center[1])))
             self._stop.wait(TRACK_INTERVAL)
-        self.done.emit(True, '定位已停止')
+        self.done.emit(True, tr('定位已停止'))

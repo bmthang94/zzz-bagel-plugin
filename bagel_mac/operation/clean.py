@@ -8,6 +8,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils.log_utils import log
 
 from ..defs import CLEAN_QUALITIES, CLEAN_TYPES
+from ..i18n import tr
 from ..stats import parse_value
 from ..vision.screen import (
     parse_capacity_pair,
@@ -43,10 +44,10 @@ class BagelCleanWarehouse(BagelOperation):
         """入仓后调用；不点整理，不点自动转化货币。"""
         super().__init__(ctx, op_name='贝果-仓库清理', timeout_seconds=90)
         if len(set(filter_areas)) != len(filter_areas) or any(name not in FILTER_AREAS or name == '筛选-全部' for name in filter_areas):
-            raise ValueError('清理筛选包含重复或未知区域')
+            raise ValueError(tr('清理筛选包含重复或未知区域'))
         if (not any(f'筛选-{name}' in filter_areas for name in CLEAN_TYPES)
                 or not any(f'筛选-{name}' in filter_areas for name in CLEAN_QUALITIES)):
-            raise ValueError('清理每一步都要同时选择类型和品质')
+            raise ValueError(tr('清理每一步都要同时选择类型和品质'))
         self.filter_areas: frozenset[str] = frozenset(filter_areas)
         self._filter_count: int | None = None
         self._safe_was_clear: bool = False
@@ -182,7 +183,7 @@ class BagelCleanWarehouse(BagelOperation):
             if states is not None and states[name] == (name in self.filter_areas):
                 self._pending_filter = None
             elif self.operation_usage_time - self._filter_clicked_at >= 3:
-                return self.round_fail(f'{name}点击后未能核对目标状态，停止并保留现场')
+                return self.round_fail('{v0}点击后未能核对目标状态，停止并保留现场'.format(v0=name))
             else:
                 return self.round_wait('等待筛选状态更新', wait=0.25)
         if states is None:
@@ -217,9 +218,9 @@ class BagelCleanWarehouse(BagelOperation):
         text = read_area(self.ctx, self.last_screenshot, '贝果-仓库', '筛选数量')
         count = parse_filter_count(text)
         if count is None:
-            return self.round_fail(f'无法读取筛选数量（{text}），停止并保留现场')
+            return self.round_fail('无法读取筛选数量（{v0}），停止并保留现场'.format(v0=text))
         self._filter_count = count
-        log.info('贝果出售筛选：条件=%s；命中=%s件，允许安全箱参与=%s；仓库基线=%s，安全箱基线=%s',
+        log.info(tr('贝果出售筛选：条件=%s；命中=%s件，允许安全箱参与=%s；仓库基线=%s，安全箱基线=%s'),
                  '、'.join(name.removeprefix('筛选-') for name in sorted(self.filter_areas)),
                  count, self.allow_safe_items, self._warehouse_before, self._safe_before)
         if count <= 0:
@@ -301,9 +302,9 @@ class BagelCleanWarehouse(BagelOperation):
                 warehouse_after == self._warehouse_before and not safe_reduced
             ):
                 return self.round_fail(
-                    f'出售后仓库未腾位（{self._warehouse_before} -> {warehouse_after}），停止并保留现场',
+                    '出售后仓库未腾位（{v0} -> {v1}），停止并保留现场'.format(v0=self._warehouse_before, v1=warehouse_after),
                 )
-            log.info('贝果出售核验：筛选命中=%s件；仓库占用=%s -> %s，安全箱占用=%s -> %s；已回到仓库',
+            log.info(tr('贝果出售核验：筛选命中=%s件；仓库占用=%s -> %s，安全箱占用=%s -> %s；已回到仓库'),
                      self._filter_count, self._warehouse_before, warehouse_after,
                      self._safe_before, safe_after)
             return self.round_success(self.STATUS_DONE, data={'sale_coins': self.sale_coins})

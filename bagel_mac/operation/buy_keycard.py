@@ -10,6 +10,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils import str_utils
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr
 from .open_compendium import BagelOpenCompendium
 from .operation import BagelOperation
 
@@ -136,7 +137,7 @@ class BagelBuyKeycard(BagelOperation):
 
         # 若在大世界，通过快捷手册进入
         if self.round_by_find_area(self.last_screenshot, '大世界-普通', '快捷手册').is_success:
-            log.info('贝果购买房卡：在大世界画面，打开快捷手册进入主页面')
+            log.info(tr('贝果购买房卡：在大世界画面，打开快捷手册进入主页面'))
             res = BagelOpenCompendium(self.ctx).execute()
             self.screenshot()
             if not res.success:
@@ -161,7 +162,7 @@ class BagelBuyKeycard(BagelOperation):
         if not clicked:
             # 坐标兜底点击
             self.ctx.controller.click(HUB_SHOP_BUTTON_POS)
-            log.info('点击主页面商店按钮坐标 %s', HUB_SHOP_BUTTON_POS)
+            log.info(tr('点击主页面商店按钮坐标 %s'), HUB_SHOP_BUTTON_POS)
 
         return self.round_wait('等待打开商店', wait=1.0)
 
@@ -204,13 +205,13 @@ class BagelBuyKeycard(BagelOperation):
         rect = self._match_card_rect()
         if rect is not None:
             click_point = Point(rect.center.x, rect.center.y + 40)
-            log.info('在商店中找到房卡「%s」，文字区域 %s，点击位置 %s', self.room_name, rect, click_point)
+            log.info(tr('在商店中找到房卡「%s」，文字区域 %s，点击位置 %s'), self.room_name, rect, click_point)
             self.ctx.controller.click(click_point)
             return self.round_success('已点击房卡', wait=0.8)
 
         if self._scroll_count < 4:
             self._scroll_count += 1
-            log.info('当前未见房卡「%s」，向下滑动商品列表 500 像素 (第 %s 次)', self.room_name, self._scroll_count)
+            log.info(tr('当前未见房卡「%s」，向下滑动商品列表 500 像素 (第 %s 次)'), self.room_name, self._scroll_count)
             # 以 300 像素/s 的速度向上拖拽 500 像素使列表下滑
             self.ctx.controller.drag_to(
                 start=Point(1100, 750),
@@ -219,7 +220,7 @@ class BagelBuyKeycard(BagelOperation):
             )
             return self.round_wait('向下滑动商品列表', wait=0.5)
 
-        return self.round_fail(f'在商店常驻战备中未找到房卡「{self.room_name}」')
+        return self.round_fail('在商店常驻战备中未找到房卡「{v0}」'.format(v0=self.room_name))
 
     @node_from(from_name='查找并选择房卡', status='已点击房卡')
     @operation_node(name='兑换确认弹窗', timeout_seconds=20)
@@ -231,11 +232,11 @@ class BagelBuyKeycard(BagelOperation):
                 return self.round_fail('未能呼出房卡兑换确认弹窗')
             return self.round_wait('等待兑换确认弹窗', wait=0.5)
 
-        log.info('已呼出「%s」兑换确认弹窗，准备购买 %s 张', self.room_name, self.count)
+        log.info(tr('已呼出「%s」兑换确认弹窗，准备购买 %s 张'), self.room_name, self.count)
         # 默认数量为 1，若需要购买更多张，点击「+」按钮 (self.count - 1) 次
         clicks_needed = min(self.count, 30) - 1
         if clicks_needed > 0:
-            log.info('连续点击「+」按钮 %s 次以调整购买数量', clicks_needed)
+            log.info(tr('连续点击「+」按钮 %s 次以调整购买数量'), clicks_needed)
             for _ in range(clicks_needed):
                 self.ctx.controller.click(PLUS_BUTTON_POS)
                 time.sleep(0.08)
@@ -243,7 +244,7 @@ class BagelBuyKeycard(BagelOperation):
 
         # 点击确认购买
         self.ctx.controller.click(CONFIRM_BUTTON_POS)
-        log.info('已点击兑换确认按钮')
+        log.info(tr('已点击兑换确认按钮'))
         return self.round_success('已确认兑换', wait=1.0)
 
     @node_from(from_name='兑换确认弹窗', status='已确认兑换')
@@ -255,7 +256,7 @@ class BagelBuyKeycard(BagelOperation):
         """
         # 处理可能出现的「获得」提示弹窗
         if any('获得' in text for text in self._ocr_texts(GAIN_TITLE_RECT)):
-            log.info('关闭房卡获得提示弹窗')
+            log.info(tr('关闭房卡获得提示弹窗'))
             self.ctx.controller.click(Point(960, 950))
             return self.round_wait('等待获得弹窗关闭', wait=0.6)
 
@@ -263,7 +264,7 @@ class BagelBuyKeycard(BagelOperation):
         if self._dialog_open():
             self._finish_checks += 1
             if self._finish_checks > 3:
-                log.error('兑换确认弹窗未能关闭，可能齿轮硬币不足或达到上限')
+                log.error(tr('兑换确认弹窗未能关闭，可能齿轮硬币不足或达到上限'))
                 self.ctx.controller.click(CLOSE_DIALOG_POS)
                 return self.round_fail('房卡兑换未完成，可能齿轮硬币不足')
             return self.round_wait('等待兑换确认弹窗关闭', wait=0.6)
@@ -275,8 +276,8 @@ class BagelBuyKeycard(BagelOperation):
 
         # 检查是否已回到主页面
         if self._at_main_page():
-            log.info('已成功购买「%s」房卡 %s 张并返回主页面', self.room_name, self.count)
-            return self.round_success(f'已成功购买 {self.room_name} 房卡 {self.count} 张')
+            log.info(tr('已成功购买「%s」房卡 %s 张并返回主页面'), self.room_name, self.count)
+            return self.round_success('已成功购买 {v0} 房卡 {v1} 张'.format(v0=self.room_name, v1=self.count))
 
         # 兜底返回
         self.round_by_click_area('菜单', '返回')

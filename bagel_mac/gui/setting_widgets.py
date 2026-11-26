@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from one_dragon.base.config.config_item import ConfigItem
 from one_dragon_qt.widgets.adapter_init_mixin import AdapterInitMixin
 from one_dragon_qt.widgets.multi_selection_combo_box import MultiSelectionComboBox
 from PySide6 import QtCore
@@ -44,6 +45,7 @@ from ..defs import (
     CLEAN_QUALITIES,
     CLEAN_TYPES,
 )
+from ..i18n import tr
 
 
 class CountSpinBox(SpinBox, AdapterInitMixin):
@@ -80,9 +82,9 @@ class AutoSaleSwitch(SwitchButton, AdapterInitMixin):
         """沿用 Fluent 开关和适配器。"""
         SwitchButton.__init__(self, parent, indicatorPos=IndicatorPosition.RIGHT)
         AdapterInitMixin.__init__(self)
-        self.setOnText('已开启')
-        self.setOffText('已关闭')
-        self.setAccessibleName('自动出售')
+        self.setOnText(tr('已开启'))
+        self.setOffText(tr('已关闭'))
+        self.setAccessibleName(tr('自动出售'))
         self.checkedChanged.connect(self._save_value)
 
     def _set_value_from_adapter(self, value: bool) -> None:
@@ -108,9 +110,9 @@ class SettingSwitch(SwitchButton, AdapterInitMixin):
         """沿用 Fluent 开关和适配器。"""
         SwitchButton.__init__(self, parent, indicatorPos=IndicatorPosition.RIGHT)
         AdapterInitMixin.__init__(self)
-        self.setOnText('已开启')
-        self.setOffText('已关闭')
-        self.setAccessibleName(name)
+        self.setOnText(tr('已开启'))
+        self.setOffText(tr('已关闭'))
+        self.setAccessibleName(tr(name))
         self.checkedChanged.connect(self._save_value)
 
     def _set_value_from_adapter(self, value: bool) -> None:
@@ -144,7 +146,7 @@ class ChoiceSegment(SegmentedWidget):
         """
         super().__init__(parent)
         for key, text in options:
-            item = self.addItem(key, text)
+            item = self.addItem(key, tr(text))
             setCustomStyleSheet(
                 item,
                 'SegmentedItem:disabled { color: rgba(0, 0, 0, 0.32); }',
@@ -154,7 +156,7 @@ class ChoiceSegment(SegmentedWidget):
         self.hBoxLayout.setSizeConstraint(QHBoxLayout.SizeConstraint.SetDefaultConstraint)
         self.hBoxLayout.setAlignment(Qt.AlignmentFlag(0))
         self.setFixedWidth(self.WIDTH)
-        self.setAccessibleName(name)
+        self.setAccessibleName(tr(name))
 
     def set_value(self, key: str) -> None:
         """切换选中项，不发出变更信号。"""
@@ -179,10 +181,10 @@ class SaleModeSelector(SegmentedWidget, AdapterInitMixin):
         SegmentedWidget.__init__(self, parent)
         AdapterInitMixin.__init__(self)
         for mode in BagelCleanMode:
-            self.addItem(mode.value.value, mode.value.ui_text)
+            self.addItem(mode.value.value, tr(mode.value.label))
         self.setCurrentItem(CLEAN_MODE_DEFAULT)
         self.setFixedWidth(180)
-        self.setAccessibleName('出售方案')
+        self.setAccessibleName(tr('出售方案'))
         self.currentItemChanged.connect(self._save_value)
 
     def _set_value_from_adapter(self, value: str) -> None:
@@ -216,7 +218,9 @@ class CleanStepCard(SimpleCardWidget):
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(12)
         heading = QHBoxLayout()
-        heading.addWidget(StrongBodyLabel(f'第 {index + 1} 步', self))
+        heading.addWidget(
+            StrongBodyLabel(tr('第 {index} 步').format(index=index + 1), self)
+        )
         heading.addStretch(1)
         for offset, icon, text in (
             (-1, FluentIcon.UP, '上移'),
@@ -224,15 +228,19 @@ class CleanStepCard(SimpleCardWidget):
         ):
             button = TransparentToolButton(icon, self)
             button.setFixedSize(28, 28)
-            button.setToolTip(text)
-            button.setAccessibleName(f'{text}第 {index + 1} 步')
+            button.setToolTip(tr(text))
+            button.setAccessibleName(
+                tr('{action}第 {index} 步').format(action=tr(text), index=index + 1)
+            )
             button.setEnabled(0 <= index + offset < count)
             button.clicked.connect(
                 lambda _checked=False, delta=offset: self.move_requested.emit(delta)
             )
             heading.addWidget(button)
-        delete_button = TransparentPushButton('删除', self)
-        delete_button.setAccessibleName(f'删除第 {index + 1} 步')
+        delete_button = TransparentPushButton(tr('删除'), self)
+        delete_button.setAccessibleName(
+            tr('删除第 {index} 步').format(index=index + 1)
+        )
         delete_button.clicked.connect(self.delete_requested)
         heading.addWidget(delete_button)
         layout.addLayout(heading)
@@ -243,8 +251,15 @@ class CleanStepCard(SimpleCardWidget):
         self.qualities_box: MultiSelectionComboBox = MultiSelectionComboBox(
             fixed_width=120, parent=self
         )
-        self.types_box.set_items([item.value for item in BagelCleanType])
+        # 显示文本翻译，写回配置的仍是 ConfigItem.value 原值。
+        self.types_box.set_items([
+            ConfigItem(tr(item.value.label), item.value.value)
+            for item in BagelCleanType
+        ])
         self.qualities_box.set_items([item.value for item in BagelCleanQuality])
+        # 占位符文案是框架写死的默认值，插件在创建后补一层翻译。
+        self.types_box.set_placeholder_text(tr('请选择...'))
+        self.qualities_box.set_placeholder_text(tr('请选择...'))
         self.types_box.set_value(list(step.types), emit_signal=False)
         self.qualities_box.set_value(list(step.qualities), emit_signal=False)
         self._fields: list[tuple[QWidget, MultiSelectionComboBox]] = []
@@ -254,8 +269,8 @@ class CleanStepCard(SimpleCardWidget):
         fields = QHBoxLayout()
         fields.setSpacing(18)
         for title, box, stretch in (
-            ('物品类型 · 可多选', self.types_box, 135),
-            ('品质 · 可多选', self.qualities_box, 100),
+            (tr('物品类型 · 可多选'), self.types_box, 135),
+            (tr('品质 · 可多选'), self.qualities_box, 100),
         ):
             field = QWidget(self)
             field.setMinimumWidth(0)
@@ -271,7 +286,9 @@ class CleanStepCard(SimpleCardWidget):
             column.addWidget(box)
             column.addStretch(1)
             fields.addWidget(field, stretch)
-            box.setAccessibleName(f'第 {index + 1} 步{title}')
+            box.setAccessibleName(
+                tr('第 {index} 步{title}').format(index=index + 1, title=title)
+            )
             box.selection_changed.connect(self._on_selection_changed)
             self._fields.append((field, box))
             field.installEventFilter(self)
@@ -347,7 +364,7 @@ def tag_row(values: tuple[str, ...], parent: QWidget) -> QWidget:
         'Z': (('#a32849', '#ffe9ef', '#dd97aa'), ('#ffb3c6', '#4b2935', '#b56d84')),
     }
     for value in values:
-        label = QLabel(value, widget)
+        label = QLabel(tr(value), widget)
         label.setObjectName('scopeTag')
         label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         FluentStyleSheet.LABEL.apply(label)
@@ -382,8 +399,8 @@ class SaleScopePreview(SimpleCardWidget):
         self._layout.setContentsMargins(16, 15, 16, 15)
         self._layout.setSpacing(12)
         heading = QHBoxLayout()
-        heading.addWidget(StrongBodyLabel('出售范围总预览', self))
-        self._incomplete_hint: CaptionLabel = CaptionLabel('仅汇总已填完整的步骤', self)
+        heading.addWidget(StrongBodyLabel(tr('出售范围总预览'), self))
+        self._incomplete_hint: CaptionLabel = CaptionLabel(tr('仅汇总已填完整的步骤'), self)
         heading.addWidget(self._incomplete_hint)
         heading.addStretch(1)
         self._layout.addLayout(heading)
@@ -404,8 +421,8 @@ class SaleScopePreview(SimpleCardWidget):
         grid.setColumnStretch(0, 56)
         grid.setColumnStretch(1, 44)
         if groups:
-            grid.addWidget(CaptionLabel('物品类型', table), 0, 0)
-            grid.addWidget(CaptionLabel('品质', table), 0, 1)
+            grid.addWidget(CaptionLabel(tr('物品类型'), table), 0, 0)
+            grid.addWidget(CaptionLabel(tr('品质'), table), 0, 1)
             for row, group in enumerate(groups, start=1):
                 grid.addWidget(
                     tag_row(group.types, table), row, 0, Qt.AlignmentFlag.AlignTop
@@ -415,9 +432,9 @@ class SaleScopePreview(SimpleCardWidget):
                 )
         else:
             text = (
-                '补全类型和品质后显示。'
+                tr('补全类型和品质后显示。')
                 if steps
-                else '添加步骤并选择类型和品质后显示。'
+                else tr('添加步骤并选择类型和品质后显示。')
             )
             grid.addWidget(BodyLabel(text, table), 0, 0, 1, 2)
         self._layout.replaceWidget(self._table, table)

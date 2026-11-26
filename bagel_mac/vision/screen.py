@@ -17,6 +17,7 @@ from ..defs import (
 if TYPE_CHECKING:
     from cv2.typing import MatLike
     from zzz_od.context.zzz_context import ZContext
+from ..i18n import tr
 
 # 详情操作文字只出现在备战右侧，不读左侧仓储候选列表。
 _PREPARE_RIGHT_RECT: Rect = Rect(1000, 0, 1920, 1080)
@@ -26,7 +27,7 @@ def read_area(ctx: ZContext, screen: MatLike, screen_name: str, area_name: str) 
     """读取已建档区域的完整文字，不把空识别结果替换为零。"""
     area = ctx.screen_loader.get_area(screen_name, area_name)
     if area is None:
-        raise ValueError(f'缺少贝果画面区域：{screen_name}/{area_name}')
+        raise ValueError(tr('缺少贝果画面区域：{v0}/{v1}').format(v0=screen_name, v1=area_name))
     matches = ctx.ocr_service.get_ocr_result_list(
         screen, rect=area.pc_rect, crop_first=True, color_range=area.color_range,
     )
@@ -64,7 +65,7 @@ def read_coin_value(ctx: ZContext, screen: MatLike, screen_name: str, area_name:
     """
     area = ctx.screen_loader.get_area(screen_name, area_name)
     if area is None:
-        raise ValueError(f'缺少贝果画面区域：{screen_name}/{area_name}')
+        raise ValueError(tr('缺少贝果画面区域：{v0}/{v1}').format(v0=screen_name, v1=area_name))
     crop = cv2_utils.crop_image_only(screen, area.pc_rect)
     masked = mask_coin_left(crop)
     if masked is None:
@@ -145,7 +146,7 @@ def read_entry_warning_text(ctx: ZContext, screen: MatLike) -> str:
     """按行读取入场提示，避免同一行识别框的高度偏差颠倒文字顺序。"""
     area = ctx.screen_loader.get_area('贝果-入场确认', '提示')
     if area is None:
-        raise ValueError('缺少贝果画面区域：贝果-入场确认/提示')
+        raise ValueError(tr('缺少贝果画面区域：贝果-入场确认/提示'))
     matches = ctx.ocr_service.get_ocr_result_list(
         screen, rect=area.pc_rect, crop_first=True, color_range=area.color_range,
     )

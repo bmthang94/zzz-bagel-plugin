@@ -29,6 +29,7 @@ from one_dragon.utils import cal_utils, cv2_utils
 from one_dragon.utils.log_utils import log
 
 from ..defs import INTERACT_TAP_SECONDS
+from ..i18n import tr
 from ..operation.operation import scroll_interaction_row
 from ..vision.minimap_angle import analyze
 
@@ -259,7 +260,7 @@ class _InstantChannel:
                 try:
                     self._handler(command)
                 except Exception:
-                    log.error('贝果即时动作执行失败', exc_info=True)
+                    log.error(tr('贝果即时动作执行失败'), exc_info=True)
                 finally:
                     with self._lock:
                         self._running = False
@@ -417,7 +418,7 @@ class _TurnWorker:
             try:
                 current = self._sampler()
             except Exception:
-                log.error('贝果转向采样朝向失败', exc_info=True)
+                log.error(tr('贝果转向采样朝向失败'), exc_info=True)
                 current = None
             with self._lock:
                 if self._stopping:
@@ -515,7 +516,7 @@ class _TurnWorker:
                 sent += part
                 sent_chunks += 1
             except Exception:
-                log.error('贝果转向执行失败', exc_info=True)
+                log.error(tr('贝果转向执行失败'), exc_info=True)
                 break
         with self._lock:
             self._pending = sent if sent else None
@@ -577,7 +578,7 @@ class _TurnWorker:
                 self._anchor = None
                 self._still_since = None
             log.info(
-                '贝果转向校准画面 %.1fs 没变化，放行下一笔（校准保持 %.3f）',
+                tr('贝果转向校准画面 %.1fs 没变化，放行下一笔（校准保持 %.3f）'),
                 TURN_SETTLE_GRACE + TURN_STILL_TIMEOUT, self.turn_ratio,
             )
             return True
@@ -596,14 +597,14 @@ class _TurnWorker:
         if chunks > 1:
             # 拆段连发的等效倍率高于单段，不写入单段峰值箱，避免把单段校准值拉高导致中等角度欠转。
             log.info(
-                '贝果转向校准分段样本，不更新比例：%.2f（名义 %.1f 实际 %.1f，分 %s 段，当前校准 %.3f）',
+                tr('贝果转向校准分段样本，不更新比例：%.2f（名义 %.1f 实际 %.1f，分 %s 段，当前校准 %.3f）'),
                 sample, pending, delta, chunks, self.turn_ratio,
             )
             return True
         with self._lock:
             if not (TURN_RATIO_MIN <= sample <= TURN_RATIO_MAX):
                 log.info(
-                    '贝果转向校准样本异常，忽略：%.2f（名义 %.1f 实际 %.1f）',
+                    tr('贝果转向校准样本异常，忽略：%.2f（名义 %.1f 实际 %.1f）'),
                     sample, pending, delta,
                 )
                 return True
@@ -615,7 +616,7 @@ class _TurnWorker:
                 self._outlier_streak += 1
                 if self._outlier_streak < TURN_RATIO_OUTLIER_ACCEPT_STREAK:
                     log.info(
-                        '贝果转向校准离群样本，忽略：%.2f（当前 %.3f，名义 %.1f 实际 %.1f，连续 %s 次）',
+                        tr('贝果转向校准离群样本，忽略：%.2f（当前 %.3f，名义 %.1f 实际 %.1f，连续 %s 次）'),
                         sample, ref, pending, delta, self._outlier_streak,
                     )
                     return True
@@ -631,7 +632,7 @@ class _TurnWorker:
             self.turn_samples += 1
             ratio, total = self.turn_ratio, self.turn_samples
         log.info(
-            '贝果转向校准 %.3f（样本 %.2f，峰值槽 %s 个，名义 %.1f 实际 %.1f，共 %s 次）',
+            tr('贝果转向校准 %.3f（样本 %.2f，峰值槽 %s 个，名义 %.1f 实际 %.1f，共 %s 次）'),
             ratio, sample, self._peak_count, pending, delta, total,
         )
         if TURN_RATIO_MIN * 1.2 <= ratio <= TURN_RATIO_MAX / 1.2:
@@ -643,8 +644,8 @@ class _TurnWorker:
                 streak = self._clamp_streak
             if streak == TURN_RATIO_CLAMP_WARN_STREAK:
                 log.warning(
-                    '转向校准值 %.2f 已贴近可补偿边界（%.2f~%.2f），偏差可能超出范围，'
-                    '建议跑一次鼠标灵敏度检测再继续',
+                    tr('转向校准值 %.2f 已贴近可补偿边界（%.2f~%.2f），偏差可能超出范围，'
+                    '建议跑一次鼠标灵敏度检测再继续'),
                     ratio, TURN_RATIO_MIN, TURN_RATIO_MAX,
                 )
         return True
@@ -683,8 +684,8 @@ class TurnRatioMemory:
         self._off_rounds += 1
         if self._off_rounds == TURN_DX_WARN_ROUNDS:
             log.warning(
-                '贝果转向连续 %s 局校准值约 %.2f，turn_dx=%.4f 可能与游戏灵敏度不符'
-                '（按本局估算约 %.4f）；局内会自动补偿，建议运行一次鼠标灵敏度检测',
+                tr('贝果转向连续 %s 局校准值约 %.2f，turn_dx=%.4f 可能与游戏灵敏度不符'
+                '（按本局估算约 %.4f）；局内会自动补偿，建议运行一次鼠标灵敏度检测'),
                 self._off_rounds, ratio, turn_dx, turn_dx / ratio,
             )
 
@@ -780,7 +781,7 @@ class BagelInputWorker:
             是否接受本次请求。
         """
         if duration <= 0:
-            raise ValueError('前进短按时长必须大于零')
+            raise ValueError(tr('前进短按时长必须大于零'))
         with self._forward_lock:
             if self._stopping or self._forward_step_duration is not None:
                 return False
@@ -919,7 +920,7 @@ class BagelInputWorker:
             try:
                 release(release=True)
             except Exception:
-                log.error('贝果输入线程松开按键失败', exc_info=True)
+                log.error(tr('贝果输入线程松开按键失败'), exc_info=True)
 
     def _action_valid(self, epoch: int) -> bool:
         """这条即时动作是否仍有效：停止后全部无效，暂停过的旧版本号无效。"""
@@ -983,7 +984,7 @@ class BagelInputWorker:
                     if not self._forward_want and not self._forward_down:
                         self._forward_step_duration = None
                 except Exception:
-                    log.error('贝果输入线程切换前进键失败', exc_info=True)
+                    log.error(tr('贝果输入线程切换前进键失败'), exc_info=True)
             time.sleep(SLEEP_SLICE)
 
     def _step_resting(self) -> bool:
@@ -1009,7 +1010,7 @@ class BagelInputWorker:
                             self.ctx.controller.move_s(release=True)
                         self._backward_down = want
                     except Exception:
-                        log.error('贝果输入线程切换后退键失败', exc_info=True)
+                        log.error(tr('贝果输入线程切换后退键失败'), exc_info=True)
             time.sleep(SLEEP_SLICE)
 
     # ---------- 转向通道 ----------
@@ -1079,7 +1080,7 @@ class BagelInputWorker:
                 if self._forward_step_duration is not None:
                     self._forward_step_until = time.monotonic() + self._forward_step_duration
             except Exception:
-                log.error('贝果冲刺前补按前进键失败', exc_info=True)
+                log.error(tr('贝果冲刺前补按前进键失败'), exc_info=True)
 
     def _run_instant(self, command: _Command) -> None:
         """执行一条即时动作。

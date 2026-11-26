@@ -29,6 +29,7 @@ from .defs import (
     MODE_RUN,
     MODES,
 )
+from .i18n import tr
 
 
 @dataclass(frozen=True)
@@ -58,7 +59,9 @@ class BagelConfig(ApplicationConfig):
     def mode(self, value: str) -> None:
         """保存运行模式。"""
         if value not in MODES:
-            raise ValueError(f'mode 只能是 {"、".join(MODES)}')
+            raise ValueError(
+                tr('mode 只能是 {modes}').format(modes=tr('、').join(MODES))
+            )
         self.update('mode', value)
 
     @property
@@ -81,7 +84,11 @@ class BagelConfig(ApplicationConfig):
     def map_name(self, value: str) -> None:
         """保存地图。"""
         if value not in MAPS:
-            raise ValueError(f'map 只能是 {"、".join(MAPS)}')
+            raise ValueError(
+                tr('map 只能是 {maps}').format(
+                    maps=tr('、').join(tr(name) for name in MAPS)
+                )
+            )
         self.update('map', value)
 
     def stored_mode_map_problem(self) -> str | None:
@@ -94,10 +101,15 @@ class BagelConfig(ApplicationConfig):
         """
         mode = self.get('mode', DEFAULT_MODE)
         if mode not in MODES:
-            return f'mode「{mode}」无法识别，只能是 {"、".join(MODES)}'
+            return tr('mode「{mode}」无法识别，只能是 {modes}').format(
+                mode=mode, modes=tr('、').join(MODES)
+            )
         map_name = self.get('map', None)
         if map_name is not None and map_name not in MAPS:
-            return f'map「{map_name}」无法识别，只能是 {"、".join(MAPS)}'
+            return tr('map「{map_name}」无法识别，只能是 {maps}').format(
+                map_name=map_name,
+                maps=tr('、').join(tr(name) for name in MAPS),
+            )
         return None
 
     @property
@@ -115,7 +127,7 @@ class BagelConfig(ApplicationConfig):
     def keycard_room(self, value: str) -> None:
         """保存目标房间；是否已登记由启动检查对照房间清单确认。"""
         if type(value) is not str:
-            raise ValueError('keycard_room 必须是文本')
+            raise ValueError(tr('keycard_room 必须是文本'))
         self.update('keycard_room', value)
 
     @property
@@ -128,7 +140,7 @@ class BagelConfig(ApplicationConfig):
     def keycard_reserve(self, value: int) -> None:
         """保存保留张数。"""
         if type(value) is not int or not 0 <= value <= 999:
-            raise ValueError('keycard_reserve 必须是 0 至 999 的整数')
+            raise ValueError(tr('keycard_reserve 必须是 0 至 999 的整数'))
         self.update('keycard_reserve', value)
 
     @property
@@ -141,7 +153,7 @@ class BagelConfig(ApplicationConfig):
     def auto_buy_keycard(self, value: bool) -> None:
         """保存是否自动购买房卡。"""
         if type(value) is not bool:
-            raise ValueError('auto_buy_keycard 必须是布尔值')
+            raise ValueError(tr('auto_buy_keycard 必须是布尔值'))
         self.update('auto_buy_keycard', value)
 
     @property
@@ -154,7 +166,7 @@ class BagelConfig(ApplicationConfig):
     def buy_keycard_count(self, value: int) -> None:
         """保存自动购买房卡数量。"""
         if type(value) is not int or not 1 <= value <= 30:
-            raise ValueError('buy_keycard_count 必须是 1 至 30 的整数')
+            raise ValueError(tr('buy_keycard_count 必须是 1 至 30 的整数'))
         self.update('buy_keycard_count', value)
 
     @property
@@ -174,7 +186,11 @@ class BagelConfig(ApplicationConfig):
     def difficulty(self, value: str) -> None:
         """保存挑战难度。"""
         if value not in DIFFICULTIES:
-            raise ValueError(f'difficulty 只能是 {"、".join(DIFFICULTIES)}')
+            raise ValueError(
+                tr('difficulty 只能是 {difficulties}').format(
+                    difficulties=tr('、').join(tr(name) for name in DIFFICULTIES)
+                )
+            )
         self.update('difficulty', value)
 
     @property
@@ -186,7 +202,7 @@ class BagelConfig(ApplicationConfig):
     def max_success_rounds(self, value: int) -> None:
         """保存成功局数上限。"""
         if type(value) is not int or not 0 <= value <= 1000:
-            raise ValueError('max_success_rounds 必须是 0 至 1000 的整数')
+            raise ValueError(tr('max_success_rounds 必须是 0 至 1000 的整数'))
         self.update('max_success_rounds', value)
 
     @property
@@ -198,7 +214,7 @@ class BagelConfig(ApplicationConfig):
     def max_consecutive_failures(self, value: int) -> None:
         """保存连续失败上限，1 表示首次失败结算后停止。"""
         if type(value) is not int or not 1 <= value <= 10:
-            raise ValueError('max_consecutive_failures 必须是 1 至 10 的整数')
+            raise ValueError(tr('max_consecutive_failures 必须是 1 至 10 的整数'))
         self.update('max_consecutive_failures', value)
 
     @property
@@ -210,7 +226,7 @@ class BagelConfig(ApplicationConfig):
     def blueprint_priority(self, value: bool) -> None:
         """保存蓝图优先开关，不影响仓库出售。"""
         if type(value) is not bool:
-            raise ValueError('blueprint_priority 必须是布尔值')
+            raise ValueError(tr('blueprint_priority 必须是布尔值'))
         self.update('blueprint_priority', value)
 
     @property
@@ -222,7 +238,7 @@ class BagelConfig(ApplicationConfig):
     def auto_clean_warehouse(self, value: bool) -> None:
         """保存仓库清理开关。"""
         if type(value) is not bool:
-            raise ValueError('auto_clean_warehouse 必须是布尔值')
+            raise ValueError(tr('auto_clean_warehouse 必须是布尔值'))
         self.update('auto_clean_warehouse', value)
 
     @property
@@ -234,7 +250,7 @@ class BagelConfig(ApplicationConfig):
     def sell_interval(self, value: int) -> None:
         """保存出售间隔，至少 1 局。"""
         if type(value) is not int or value < 1 or value > 999:
-            raise ValueError('sell_interval 必须是 1 至 999 的整数')
+            raise ValueError(tr('sell_interval 必须是 1 至 999 的整数'))
         self.update('sell_interval', value)
 
     @property
@@ -246,7 +262,7 @@ class BagelConfig(ApplicationConfig):
     def clean_mode(self, value: str) -> None:
         """只接受默认或自定义。"""
         if value not in (CLEAN_MODE_DEFAULT, CLEAN_MODE_CUSTOM):
-            raise ValueError('clean_mode 只能是 default 或 custom')
+            raise ValueError(tr('clean_mode 只能是 default 或 custom'))
         self.update('clean_mode', value)
 
     @property
@@ -254,14 +270,14 @@ class BagelConfig(ApplicationConfig):
         """自定义时按列表顺序各出售一次。没有配置就是还没有步骤。"""
         raw = self.get('clean_steps', [])
         if type(raw) is not list:
-            raise ValueError('clean_steps 必须是列表')
+            raise ValueError(tr('clean_steps 必须是列表'))
         return [self._parse_step(item) for item in raw]
 
     @clean_steps.setter
     def clean_steps(self, value: list[BagelCleanStep]) -> None:
         """保存出售步骤。"""
         if type(value) is not list:
-            raise ValueError('clean_steps 必须是列表')
+            raise ValueError(tr('clean_steps 必须是列表'))
         self.update('clean_steps', [self._step_dict(step) for step in value])
 
     def add_clean_step(self, step: BagelCleanStep | None = None) -> None:
@@ -274,7 +290,7 @@ class BagelConfig(ApplicationConfig):
         """替换指定步骤。"""
         steps = list(self.clean_steps)
         if not 0 <= index < len(steps):
-            raise ValueError('清理步骤序号超出范围')
+            raise ValueError(tr('清理步骤序号超出范围'))
         steps[index] = step
         self.clean_steps = steps
 
@@ -282,7 +298,7 @@ class BagelConfig(ApplicationConfig):
         """删除指定步骤。"""
         steps = list(self.clean_steps)
         if not 0 <= index < len(steps):
-            raise ValueError('清理步骤序号超出范围')
+            raise ValueError(tr('清理步骤序号超出范围'))
         del steps[index]
         self.clean_steps = steps
 
@@ -290,7 +306,7 @@ class BagelConfig(ApplicationConfig):
         """把一步挪到目标位置。"""
         steps = list(self.clean_steps)
         if not 0 <= index < len(steps) or not 0 <= target < len(steps):
-            raise ValueError('清理步骤序号超出范围')
+            raise ValueError(tr('清理步骤序号超出范围'))
         step = steps.pop(index)
         steps.insert(target, step)
         self.clean_steps = steps
@@ -327,7 +343,7 @@ class BagelConfig(ApplicationConfig):
     def _parse_step(self, value: object) -> BagelCleanStep:
         """读取一步；名单外或重复的名字留给启动校验拒绝。"""
         if type(value) is not dict:
-            raise ValueError('清理步骤必须是对象')
+            raise ValueError(tr('清理步骤必须是对象'))
         return BagelCleanStep(tuple(self._stored_names(value.get('types'))), tuple(self._stored_names(value.get('qualities'))))
 
     def _step_dict(self, step: BagelCleanStep) -> dict[str, list[str]]:
@@ -341,69 +357,75 @@ class BagelConfig(ApplicationConfig):
     def _stored_names(self, value: object) -> list[str]:
         """读取一步里的名字列表。"""
         if type(value) is not list or any(type(item) is not str for item in value):
-            raise ValueError('清理步骤的类型和品质必须是字符串列表')
+            raise ValueError(tr('清理步骤的类型和品质必须是字符串列表'))
         return list(value)
 
     def _text_mode(self, name: str, default: str) -> str:
         """读取文本配置；手改成非文本时交给启动校验拒绝。"""
         value = self.get(name, default)
         if type(value) is not str:
-            raise ValueError(f'{name} 必须是文本')
+            raise ValueError(tr('{name} 必须是文本').format(name=name))
         return value
 
     def _set_names_checked(self, value: list[str], allowed: tuple[str, ...], label: str) -> None:
         """拒绝非列表、重复和名单外的名字。"""
         if any(item not in allowed for item in value):
-            raise ValueError(f'{label}只能从规定名单里选择')
+            raise ValueError(tr('{label}只能从规定名单里选择').format(label=tr(label)))
         if len(set(value)) != len(value):
-            raise ValueError(f'{label}不能重复')
+            raise ValueError(tr('{label}不能重复').format(label=tr(label)))
 
     def validate(self) -> None:
         """启动前校验配置。房间是否已登记、房间与地图是否一致、是否开启了路线由启动检查对照路线配置确认。"""
         problem = self.stored_mode_map_problem()
         if problem is not None:
-            raise ValueError(f'{problem}；打开设置页会改回默认值，确认后再运行')
+            raise ValueError(
+                tr('{problem}；打开设置页会改回默认值，确认后再运行').format(problem=problem)
+            )
         if self.is_keycard and not self.keycard_room:
-            raise ValueError('开房卡模式还没有选择房间')
+            raise ValueError(tr('开房卡模式还没有选择房间'))
         reserve = self.get('keycard_reserve', 0)
         if type(reserve) is not int or not 0 <= reserve <= 999:
-            raise ValueError('keycard_reserve 必须是 0 至 999 的整数')
+            raise ValueError(tr('keycard_reserve 必须是 0 至 999 的整数'))
         if type(self.auto_buy_keycard) is not bool:
-            raise ValueError('auto_buy_keycard 必须是布尔值')
+            raise ValueError(tr('auto_buy_keycard 必须是布尔值'))
         buy_count = self.get('buy_keycard_count', 1)
         if type(buy_count) is not int or not 1 <= buy_count <= 30:
-            raise ValueError('buy_keycard_count 必须是 1 至 30 的整数')
+            raise ValueError(tr('buy_keycard_count 必须是 1 至 30 的整数'))
         if self.difficulty not in DIFFICULTIES:
-            raise ValueError(f'difficulty 只能是 {"、".join(DIFFICULTIES)}')
+            raise ValueError(
+                tr('difficulty 只能是 {difficulties}').format(
+                    difficulties=tr('、').join(tr(name) for name in DIFFICULTIES)
+                )
+            )
         interval = self.sell_interval
         if type(interval) is not int or not 1 <= interval <= 999:
-            raise ValueError('sell_interval 必须是 1 至 999 的整数')
+            raise ValueError(tr('sell_interval 必须是 1 至 999 的整数'))
         value = self.max_success_rounds
         if type(value) is not int or not 0 <= value <= 1000:
-            raise ValueError('max_success_rounds 必须是 0 至 1000 的整数')
+            raise ValueError(tr('max_success_rounds 必须是 0 至 1000 的整数'))
         failures = self.max_consecutive_failures
         if type(failures) is not int or not 1 <= failures <= 10:
-            raise ValueError('max_consecutive_failures 必须是 1 至 10 的整数')
+            raise ValueError(tr('max_consecutive_failures 必须是 1 至 10 的整数'))
         if type(self.blueprint_priority) is not bool:
-            raise ValueError('blueprint_priority 必须是布尔值')
+            raise ValueError(tr('blueprint_priority 必须是布尔值'))
         if type(self.auto_clean_warehouse) is not bool:
-            raise ValueError('auto_clean_warehouse 必须是布尔值')
+            raise ValueError(tr('auto_clean_warehouse 必须是布尔值'))
         if self.clean_mode not in (CLEAN_MODE_DEFAULT, CLEAN_MODE_CUSTOM):
-            raise ValueError('clean_mode 只能是 default 或 custom')
+            raise ValueError(tr('clean_mode 只能是 default 或 custom'))
         steps = self.clean_steps
         for step in steps:
             if any(name not in CLEAN_TYPES for name in step.types):
-                raise ValueError('清理类型不在快速选择里')
+                raise ValueError(tr('清理类型不在快速选择里'))
             if any(name not in CLEAN_QUALITIES for name in step.qualities):
-                raise ValueError('清理品质不在快速选择里')
+                raise ValueError(tr('清理品质不在快速选择里'))
             if len(set(step.types)) != len(step.types) or len(set(step.qualities)) != len(step.qualities):
-                raise ValueError('清理筛选不能重复')
+                raise ValueError(tr('清理筛选不能重复'))
         if (
             self.auto_clean_warehouse
             and self.clean_mode == CLEAN_MODE_CUSTOM
             and (not steps or any(not step.types or not step.qualities for step in steps))
         ):
-            raise ValueError('自定义清理每一步都要同时选择类型和品质')
+            raise ValueError(tr('自定义清理每一步都要同时选择类型和品质'))
 
 
 class BagelMode(Enum):

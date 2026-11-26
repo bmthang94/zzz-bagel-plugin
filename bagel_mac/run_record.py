@@ -9,6 +9,7 @@ from one_dragon.base.operation.application_run_record import AppRunRecord
 from one_dragon.utils.log_utils import log
 
 from .const import APP_ID
+from .i18n import tr
 
 
 class BagelRunRecord(AppRunRecord):
@@ -18,7 +19,7 @@ class BagelRunRecord(AppRunRecord):
         """加载记录；坏文件由基类回落为空记录，旧版残留的物资记录直接丢弃。"""
         super().__init__(APP_ID, instance_idx, game_refresh_hour_offset)
         if not isinstance(self.data, dict):
-            log.warning('贝果运行记录不是键值格式，按空记录处理：%s', self.file_path)
+            log.warning(tr('贝果运行记录不是键值格式，按空记录处理：%s'), self.file_path)
             self.data = {}
         self.data.pop('collection', None)
 
@@ -45,7 +46,7 @@ class BagelRunRecord(AppRunRecord):
             temporary.replace(target)
             invalidate_cache(str(target))
         except OSError:
-            log.error('保存贝果运行记录失败', exc_info=True)
+            log.error(tr('保存贝果运行记录失败'), exc_info=True)
             raise
         finally:
             if temporary is not None:

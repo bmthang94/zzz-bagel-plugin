@@ -26,6 +26,7 @@ extend-ignore = [
     "E501",   # line too long
     "C901",   # method too complex
     "SIM102", # nested if statements
+    "UP032",  # tr('模板 {x}').format(...) 是刻意的写法，tr() 里禁止 f-string
     "TID252", # relative imports from parent modules
 ]
 

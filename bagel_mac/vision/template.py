@@ -15,6 +15,7 @@ from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
 
 from ..defs import PLUGIN_DIR
+from ..i18n import tr
 
 TEMPLATE_ROOT: Path = PLUGIN_DIR / 'assets' / 'template' / 'bagel'
 """插件自带模板根目录，按模板 id 分文件夹。"""
@@ -39,7 +40,7 @@ def load_template(template_id: str) -> tuple[MatLike, MatLike | None] | None:
     directory = TEMPLATE_ROOT / template_id
     raw = cv2_utils.read_image(str(directory / 'raw.png'))
     if raw is None:
-        log.warning('缺少插件模板：%s', directory)
+        log.warning(tr('缺少插件模板：%s'), directory)
         return None
     return raw, cv2_utils.read_image(str(directory / 'mask.png'))
 

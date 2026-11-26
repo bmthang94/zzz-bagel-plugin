@@ -15,6 +15,8 @@ from typing import Any
 
 from one_dragon.utils.log_utils import log
 
+from .i18n import tr
+
 DIAG_VERSION: str = 'v1'
 """格式版本：只追加字段保持不变，改字段名/顺序才升版本。"""
 
@@ -38,4 +40,4 @@ def diag(fields: dict[str, Any]) -> None:
     if not diag_enabled():
         return
     body = ' '.join(f'{key}={value}' for key, value in fields.items())
-    log.info('贝果诊断 %s · %s', DIAG_VERSION, body)
+    log.info(tr('贝果诊断 %s · %s'), DIAG_VERSION, body)

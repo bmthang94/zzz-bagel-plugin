@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr
+
 if TYPE_CHECKING:
     from cv2.typing import MatLike
     from one_dragon.base.geometry.point import Point
@@ -65,6 +67,6 @@ def read_quantity(ctx: ZContext, screen: MatLike, center: Point) -> int | None:
     try:
         text = ctx.ocr.run_ocr_single_line(screen[y1:y2, x1:x2])
     except Exception:
-        log.error('读物品数量失败', exc_info=True)
+        log.error(tr('读物品数量失败'), exc_info=True)
         return None
     return parse_quantity(str(text))

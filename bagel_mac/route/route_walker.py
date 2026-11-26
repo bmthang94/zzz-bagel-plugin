@@ -97,6 +97,7 @@ if TYPE_CHECKING:
     from one_dragon.base.operation.operation_base import OperationResult
     from one_dragon.base.operation.operation_round_result import OperationRoundResult
     from zzz_od.context.zzz_context import ZContext
+from ..i18n import tr, tr_status
 
 ELEVATOR_OPTION_TAP_SECONDS: float = 1.0
 """电梯选项还没出现时，点一次屏幕中间推进对话的间隔（用户给定每秒一次）。"""
@@ -537,7 +538,7 @@ class BagelRouteWalker(BagelOperation):
         if self.trial_route is not None and not self.trial_route.is_room_segment and not any(
             spawn.spawn_id == self.trial_route.spawn_id for spawn in self.spawns
         ):
-            raise ValueError(f'路线绑定的出生点未登记：{self.trial_route.spawn_id}')
+            raise ValueError(tr('路线绑定的出生点未登记：{v0}').format(v0=self.trial_route.spawn_id))
         self.routes: list[BagelRoute] = []
         """本局执行的路线快照；识别出生点后才确定，只含一条。"""
         self.spawn: BagelSpawnPoint | None = None
@@ -679,7 +680,7 @@ class BagelRouteWalker(BagelOperation):
         initial_ratio = turn_memory.hint if turn_memory is not None else 1.0
         trust_initial = bool(turn_memory is not None and turn_memory.trusted)
         log.info(
-            '贝果转向本局 turn_dx=%.4f，起步校准值 %.3f（%s），局内由转向线程学习；不写回 turn_dx',
+            tr('贝果转向本局 turn_dx=%.4f，起步校准值 %.3f（%s），局内由转向线程学习；不写回 turn_dx'),
             self._turn_dx(), initial_ratio, '跨局可信' if trust_initial else '未校准',
         )
         self.elevator_phase: str | None = None
@@ -786,12 +787,12 @@ class BagelRouteWalker(BagelOperation):
             parts.append(f'提示 {self.current_kind}')
         key = f'{node_name}|{NUMBER_PATTERN.sub("#", status)}|{self.route_index}|{self.cursor}' if mergeable else None
         for line in self.log_merger.submit(key, ' · '.join(parts), self.perf):
-            log.info('贝果执行 %s', line)
+            log.info(tr('贝果执行 %s'), line)
 
     def _flush_decision_log(self) -> None:
         """打出尚未汇总的合并轮次，用于暂停和结束时。"""
         for line in self.log_merger.flush():
-            log.info('贝果执行 %s', line)
+            log.info(tr('贝果执行 %s'), line)
 
     def screenshot(self) -> MatLike:
         """框架每轮开头的截图，计入本轮耗时。"""
@@ -828,10 +829,10 @@ class BagelRouteWalker(BagelOperation):
         """按原生区域裁出小地图；框架截图为 RGB，定位与朝向直接使用。"""
         area = self.ctx.screen_loader.get_area('贝果-局内', '定位小地图')
         if area is None:
-            raise ValueError('缺少贝果定位小地图区域')
+            raise ValueError(tr('缺少贝果定位小地图区域'))
         crop = cv2_utils.crop_image_only(self.last_screenshot, area.pc_rect)
         if crop is None or crop.size == 0:
-            raise ValueError('小地图裁剪为空')
+            raise ValueError(tr('小地图裁剪为空'))
         if crop.ndim == 2:
             crop = np.stack([crop] * 3, axis=-1)
         return crop
@@ -874,7 +875,7 @@ class BagelRouteWalker(BagelOperation):
             self.spawn_started_at = now
         if now - self.spawn_started_at > SPAWN_OBSERVE_SECONDS:
             reason = '定位失败' if self.spawn_last_match is None else self.spawn_last_match.describe()
-            log.warning('贝果出生点识别：%.0f 秒内没有稳定结论（%s）', SPAWN_OBSERVE_SECONDS, reason)
+            log.warning(tr('贝果出生点识别：%.0f 秒内没有稳定结论（%s）'), SPAWN_OBSERVE_SECONDS, tr_status(reason))
             return self.round_fail(self.STATUS_SPAWN_FAILED, data=reason)
         position = self.locate()
         if position is None:
@@ -888,7 +889,7 @@ class BagelRouteWalker(BagelOperation):
             return self.round_wait(match.describe(), wait=0.2)
         if match.kind == SPAWN_MISS:
             log.info(
-                '贝果出生点识别：位置 (%.0f,%.0f) 不在任何已登记出生点范围内',
+                tr('贝果出生点识别：位置 (%.0f,%.0f) 不在任何已登记出生点范围内'),
                 position[0], position[1],
             )
             return self.round_fail(self.STATUS_ANCHOR_MISS)
@@ -905,7 +906,7 @@ class BagelRouteWalker(BagelOperation):
         room_id = route.keycard.room_id if route.keycard is not None else ''
         room = next((item for item in self.store.load_rooms() if item.room_id == room_id), None)
         if room is None:
-            raise BagelRouteConfigError(f'房间段所属房间未登记：{room_id}')
+            raise BagelRouteConfigError(tr('房间段所属房间未登记：{v0}').format(v0=room_id))
         return room.as_spawn()
 
     def _start_route_at(self, spawn: BagelSpawnPoint) -> OperationRoundResult:
@@ -934,19 +935,19 @@ class BagelRouteWalker(BagelOperation):
             try:
                 route = self.store.keycard_route(self.keycard_room, spawn.spawn_id)
             except BagelRouteConfigError as error:
-                log.error('贝果开房卡房间 %s 的路线配置无效：%s', self.keycard_room, error)
+                log.error(tr('贝果开房卡房间 %s 的路线配置无效：%s'), self.keycard_room, error)
                 return self.round_fail(self.STATUS_CONFIG_INVALID, data=str(error))
             if route is None:
-                log.info('贝果出生点识别：%s 没有开启去房间 %s 的入口段', spawn.name, self.keycard_room)
+                log.info(tr('贝果出生点识别：%s 没有开启去房间 %s 的入口段'), spawn.name, self.keycard_room)
                 return self.round_fail(self.STATUS_ANCHOR_MISS)
         else:
             try:
                 route = self.store.active_route(spawn.spawn_id)
             except BagelRouteConfigError as error:
-                log.error('贝果出生点 %s 的路线配置无效：%s', spawn.name, error)
+                log.error(tr('贝果出生点 %s 的路线配置无效：%s'), spawn.name, error)
                 return self.round_fail(self.STATUS_CONFIG_INVALID, data=str(error))
             if route is None:
-                log.info('贝果出生点识别：%s 没有开启的路线', spawn.name)
+                log.info(tr('贝果出生点识别：%s 没有开启的路线'), spawn.name)
                 return self.round_fail(self.STATUS_ANCHOR_MISS)
         problem = check_route_start(route, spawn)
         if problem is not None:
@@ -954,7 +955,7 @@ class BagelRouteWalker(BagelOperation):
         self.routes = [route]
         self._enter_point(0, 0)
         log.info(
-            '贝果出生点识别：%s，执行路线「%s」（%s），共 %s 点',
+            tr('贝果出生点识别：%s，执行路线「%s」（%s），共 %s 点'),
             spawn.name, route.name, route.ref, len(route.points),
         )
         return self.round_success('已锚定')
@@ -1033,7 +1034,7 @@ class BagelRouteWalker(BagelOperation):
     @operation_node(name='路线结束')
     def finish_route(self) -> OperationRoundResult:
         """本局只执行一条路线，走完且现场没有交互物即结束。"""
-        log.info('贝果路线执行：路线「%s」走完', self.routes[self.route_index].name)
+        log.info(tr('贝果路线执行：路线「%s」走完'), self.routes[self.route_index].name)
         return self.round_success(self.STATUS_DONE)
 
     # ---------- 导航 ----------
@@ -1127,7 +1128,7 @@ class BagelRouteWalker(BagelOperation):
                 if abs(angle_diff) > WALK_TURN_ANGLE:
                     # 方向偏太多先停下等转，不然会走到旁边去。
                     self._release_forward()
-                    return self.round_wait(f'朝电梯转向 {angle_diff:.0f}度', wait=0.05)
+                    return self.round_wait('朝电梯转向 {v0:.0f}度'.format(v0=angle_diff), wait=0.05)
                 self.input_worker.hold_forward()
                 return self.round_wait('走向电梯', wait=0.15)
         # 定位暂时丢失但朝向还在（贴墙等）：先不松前进，等下一帧。
@@ -1139,7 +1140,7 @@ class BagelRouteWalker(BagelOperation):
         found = self._find_elevator_option(point.elevator_option)
         if found is not None:
             self.elevator_phase = ELEVATOR_PHASE_CLICK_OPTION
-            return self.round_wait(f'楼层选项已出现：{found.data}', wait=0.1)
+            return self.round_wait('楼层选项已出现：{v0}'.format(v0=found.data), wait=0.1)
         if time.monotonic() - self.elevator_last_tap >= ELEVATOR_OPTION_TAP_SECONDS:
             self.elevator_last_tap = time.monotonic()
             self.input_worker.tap_center()
@@ -1157,7 +1158,7 @@ class BagelRouteWalker(BagelOperation):
             self.elevator_phase = ELEVATOR_PHASE_EXIT
             return self.round_wait('楼层选项已消失，准备出梯', wait=0.1)
         self.ctx.controller.click(found.rect.center)
-        return self.round_wait(f'点选楼层：{found.data}', wait=0.2)
+        return self.round_wait('点选楼层：{v0}'.format(v0=found.data), wait=0.2)
 
     def _find_elevator_option(self, option: str) -> OcrMatchResult | None:
         """在楼层列表里找配置的文字。
@@ -1196,7 +1197,7 @@ class BagelRouteWalker(BagelOperation):
         else:
             self.input_worker.hold_forward()
         elapsed = time.monotonic() - self.elevator_since
-        return self.round_wait(f'出电梯 {elapsed:.1f}s', wait=0.15)
+        return self.round_wait('出电梯 {v0:.1f}s'.format(v0=elapsed), wait=0.15)
 
     def _release_backward(self) -> None:
         """松开后退键。"""
@@ -1310,7 +1311,7 @@ class BagelRouteWalker(BagelOperation):
         self.target_wait_since = None
         self.small_step_since = None
         log.info(
-            '贝果第 %s 点（机械保险箱）长按中提示消失，松手回碎步移动重新靠近（第 %s/%s 次），位置 %s',
+            tr('贝果第 %s 点（机械保险箱）长按中提示消失，松手回碎步移动重新靠近（第 %s/%s 次），位置 %s'),
             self.cursor + 1, self.mechanical_lost_count, MECHANICAL_PROMPT_LOST_LIMIT, self.position,
         )
         return self.round_success('机械保险箱提示消失')
@@ -1349,7 +1350,7 @@ class BagelRouteWalker(BagelOperation):
             self._release_forward()
             if self.card_pressed:
                 return self._card_spent(now, text)
-            log.info('贝果刷卡处还没长按就显示持卡数为 0：%s', text)
+            log.info(tr('贝果刷卡处还没长按就显示持卡数为 0：%s'), text)
             return self.round_fail(self.STATUS_KEYCARD_MISSING, data=text)
         waiting = self._prepare_interaction('card_reader')
         if waiting is not None:
@@ -1389,7 +1390,7 @@ class BagelRouteWalker(BagelOperation):
         if done:
             self.input_worker.release_interact()
             self.card_released_at = now
-            log.info('贝果刷卡松手：长按 %.1f 秒，计数 %s', elapsed, '未读到' if count is None else count)
+            log.info(tr('贝果刷卡松手：长按 %.1f 秒，计数 %s'), elapsed, '未读到' if count is None else count)
             self.card_hold_started = None
             self.card_verify_since = now
             return self.round_wait('松手确认刷卡结果', wait=CARD_VERIFY_WAIT_SECONDS)
@@ -1416,14 +1417,14 @@ class BagelRouteWalker(BagelOperation):
         """
         if self.card_spent_since is None:
             self.card_spent_since = now
-            log.info('贝果刷卡：长按过后计数为 0，不再重按，等提示消失：%s', text)
+            log.info(tr('贝果刷卡：长按过后计数为 0，不再重按，等提示消失：%s'), text)
         released = self.card_released_at if self.card_released_at is not None else self.card_spent_since
         if now - released < CARD_SPENT_WAIT_SECONDS:
             return self.round_wait('长按过后计数为 0，等刷卡提示消失', wait=0.2)
         if self.card_seen_loaded:
             self._reset_point_state()
             return self.round_recoverable_fail(f'刷卡后计数为 0，但提示 {CARD_SPENT_WAIT_SECONDS:.0f} 秒没消失，门是否刷开不明')
-        log.info('贝果刷卡：长按过后计数为 0，提示一直在，本点没读到过非 0 计数，按没带卡处理：%s', text)
+        log.info(tr('贝果刷卡：长按过后计数为 0，提示一直在，本点没读到过非 0 计数，按没带卡处理：%s'), text)
         return self.round_fail(self.STATUS_KEYCARD_MISSING, data=text)
 
     def _card_hold_lost(self, now: float, elapsed: float) -> OperationRoundResult | None:
@@ -1461,8 +1462,8 @@ class BagelRouteWalker(BagelOperation):
         if self.card_probe_step is None:
             self.card_probe_step = 0
         log.info(
-            '贝果第 %s 点（房卡门）长按 %.1f 秒时刷卡提示消失，没刷上，松手回碎步移动左右试探'
-            '（第 %s/%s 次，从第 %s 步起），位置 %s',
+            tr('贝果第 %s 点（房卡门）长按 %.1f 秒时刷卡提示消失，没刷上，松手回碎步移动左右试探'
+            '（第 %s/%s 次，从第 %s 步起），位置 %s'),
             self.cursor + 1, elapsed, self.card_hold_lost_count, CARD_HOLD_LOST_LIMIT,
             self.card_probe_step + 1, self.position,
         )
@@ -1492,11 +1493,11 @@ class BagelRouteWalker(BagelOperation):
                     self._reset_point_state()
                     return self.round_recoverable_fail('刷卡重按后 F 键仍对准刷卡条目，门没刷开')
                 self.card_retried = True
-                log.info('贝果刷卡松手 %.1f 秒后 F 键仍对准刷卡条目，判定没刷上，重按：%s',
+                log.info(tr('贝果刷卡松手 %.1f 秒后 F 键仍对准刷卡条目，判定没刷上，重按：%s'),
                          now - released_at, text)
                 return self.round_wait('刷卡没刷上，重按', wait=0.1)
         self.card_verify_since = None
-        log.info('贝果刷卡完成：松手 %.1f 秒后%s', now - released_at,
+        log.info(tr('贝果刷卡完成：松手 %.1f 秒后%s'), now - released_at,
                  '刷卡提示已消失' if card is None else f'F 键已消失，条目 {card[1]}')
         self.card_swiped = True
         self._reset_point_state()
@@ -1509,7 +1510,7 @@ class BagelRouteWalker(BagelOperation):
             reason: 开始试探的原因，写进日志。
         """
         self._release_forward()
-        log.info('贝果第 %s 点（房卡门）%s，开始左右试探刷卡提示', self.cursor + 1, reason)
+        log.info(tr('贝果第 %s 点（房卡门）%s，开始左右试探刷卡提示'), self.cursor + 1, tr_status(reason))
         self.card_probe_step = 0
         return self._probe_card_reader()
 
@@ -1524,7 +1525,7 @@ class BagelRouteWalker(BagelOperation):
         self.input_worker.side_step(direction, CARD_PROBE_STEP_SECONDS)
         self._record_input()
         log.info(
-            '贝果房卡门试探第 %s/%s 步：向%s侧移 %.1f 秒，位置 %s',
+            tr('贝果房卡门试探第 %s/%s 步：向%s侧移 %.1f 秒，位置 %s'),
             step + 1, len(CARD_PROBE_SEQUENCE), '左' if direction < 0 else '右',
             CARD_PROBE_STEP_SECONDS, self.position,
         )
@@ -1550,7 +1551,7 @@ class BagelRouteWalker(BagelOperation):
         if self.card_probe_step is None:
             self.card_probe_step = 0
         log.info(
-            '贝果第 %s 点（房卡门）刷卡提示出现后又消失，回到碎步移动左右试探（从第 %s 步起），位置 %s',
+            tr('贝果第 %s 点（房卡门）刷卡提示出现后又消失，回到碎步移动左右试探（从第 %s 步起），位置 %s'),
             self.cursor + 1, self.card_probe_step + 1, self.position,
         )
         return self.round_success('刷卡提示消失')
@@ -1685,9 +1686,9 @@ class BagelRouteWalker(BagelOperation):
         """
         self.pickup_ignored.add(text)
         self.pickup_failures += 1
-        log.warning('贝果拾取：「%s」%s，跳过（本局第 %s 条捡不起来）', text, reason, self.pickup_failures)
+        log.warning(tr('贝果拾取：「%s」%s，跳过（本局第 %s 条捡不起来）'), text, tr_status(reason), self.pickup_failures)
         if self.pickup_failures >= PICKUP_FAIL_LIMIT:
-            log.warning('贝果拾取：累计 %s 条捡不起来，按背包已满处理，本局不再拾取', self.pickup_failures)
+            log.warning(tr('贝果拾取：累计 %s 条捡不起来，按背包已满处理，本局不再拾取'), self.pickup_failures)
 
     def _recover_pickup_panel(self) -> OperationRoundResult | None:
         """拾取后若列表重排导致误开面板，原地关闭并回到当前节点。"""
@@ -1730,7 +1731,7 @@ class BagelRouteWalker(BagelOperation):
         row = frame.selected
         if self.pickup_text and stable and row is not None and (row.kind != 'pickup' or row.text != self.pickup_text):
             self.pickups += 1
-            log.info('贝果拾取：「%s」已离开选中行，按已拾取计（本局第 %s 条）', self.pickup_text, self.pickups)
+            log.info(tr('贝果拾取：「%s」已离开选中行，按已拾取计（本局第 %s 条）'), self.pickup_text, self.pickups)
             if not moving and self.cleanup_since is not None:
                 self.cleanup_since = time.monotonic()
             self.pickup_text = None
@@ -1750,7 +1751,7 @@ class BagelRouteWalker(BagelOperation):
             self.selection.reset(self.last_input_frame or self.last_screenshot_time)
             self.scanned_rows.clear()
             log.info(
-                '贝果%s点按F拾取「%s」（第 %s 次按它%s）',
+                tr('贝果%s点按F拾取「%s」（第 %s 次按它%s）'),
                 '移动中' if moving else '原地', row.text, self.pickup_taps,
                 f'，距上次拾取点按 {since:.2f}s' if since < 10 else '',
             )
@@ -1769,13 +1770,13 @@ class BagelRouteWalker(BagelOperation):
         if not rows:
             return
         log.info(
-            '贝果拾取：现场观察结束时的提示列表：%s',
+            tr('贝果拾取：现场观察结束时的提示列表：%s'),
             '；'.join(f'{row.kind}「{row.text}」' if row.text else row.kind for row in rows),
         )
         left = [row.text for row in rows if row.kind == 'pickup']
         if left:
             path = save_screenshot(self.ctx, self.last_screenshot, 'BagelPickupLeft')
-            log.info('贝果拾取：现场还剩 %s 条拾取物没捡，截图 %s', len(left), path)
+            log.info(tr('贝果拾取：现场还剩 %s 条拾取物没捡，截图 %s'), len(left), path)
 
     def _press_f(self, kind: str) -> OperationRoundResult:
         """普通容器和门点按 F。
@@ -1801,7 +1802,7 @@ class BagelRouteWalker(BagelOperation):
         if time.monotonic() - self.press_f_at < PRESS_F_RESULT_SECONDS:
             return self.round_wait('已点按F，等待结果', wait=PRESS_F_POLL_SECONDS)
         if self.press_f_taps >= PRESS_F_MAX_TAPS:
-            log.info('贝果第 %s 点（%s）点按 F %s 次后提示仍在，判本局失败', self.cursor + 1, kind, self.press_f_taps)
+            log.info(tr('贝果第 %s 点（%s）点按 F %s 次后提示仍在，判本局失败'), self.cursor + 1, kind, self.press_f_taps)
             self._reset_point_state()
             return self.round_recoverable_fail('点按F后提示一直不消失')
         waiting = self._prepare_interaction(kind)
@@ -1868,7 +1869,7 @@ class BagelRouteWalker(BagelOperation):
                 return self.round_success('全部拾取已清空')
             return self.round_wait('等待全部拾取生效', wait=PICK_ALL_POLL_SECONDS)
         if self._result_slots_empty():
-            log.info('贝果拾取：结果区已清空，跳过「全部拾取」')
+            log.info(tr('贝果拾取：结果区已清空，跳过「全部拾取」'))
             return self.round_success('结果区已空，跳过')
         has_title = self._has('搜查容器标题') or self._has('电子保险箱标题')
         has_button = self._has('搜查完成')
@@ -1878,7 +1879,7 @@ class BagelRouteWalker(BagelOperation):
         self.pickup_presses += 1
         self._pick_all_sent_at = now
         self._last_pick_all_at = now
-        log.info('贝果拾取：入箱后点按 F「全部拾取」')
+        log.info(tr('贝果拾取：入箱后点按 F「全部拾取」'))
         return self.round_wait('等待全部拾取生效', wait=PICK_ALL_INITIAL_WAIT)
 
     @node_from(from_name='拾取剩余')
@@ -1901,7 +1902,7 @@ class BagelRouteWalker(BagelOperation):
         if result.success:
             self.organized_at_presses = self.pickup_presses
             return self.round_success('容器内背包整理完成')
-        log.warning('贝果容器内整理背包未完成：%s；留待退出前处理', result.status)
+        log.warning(tr('贝果容器内整理背包未完成：%s；留待退出前处理'), tr_status(result.status))
         return self.round_success('容器内整理跳过')
 
     @node_from(from_name='容器内整理背包')
@@ -1922,7 +1923,7 @@ class BagelRouteWalker(BagelOperation):
         Args:
             reason: 失败原因；补读结束后原样作为可结算重开的失败返回。
         """
-        log.info('贝果%s；先补读调查收益，再结束本局', reason)
+        log.info(tr('贝果%s；先补读调查收益，再结束本局'), tr_status(reason))
         self.fail_reason = reason
         if self.last_screenshot is not None:
             self.fail_screenshot = (self.last_screenshot_time, self.last_screenshot)
@@ -1953,7 +1954,7 @@ class BagelRouteWalker(BagelOperation):
             value = self._read_hud_survey()
         if value is not None and value == self.fail_survey_last:
             log.info(
-                '贝果失败前补读调查收益：HUD 读数 %s，上一次读数 %s',
+                tr('贝果失败前补读调查收益：HUD 读数 %s，上一次读数 %s'),
                 format_value(value), format_value(self.survey_value),
             )
             self.survey_value = value
@@ -1970,7 +1971,7 @@ class BagelRouteWalker(BagelOperation):
             skipped: 没有采用补读结果的原因；已采用时为 None。
         """
         if skipped is not None:
-            log.info('贝果失败前补读调查收益：%s，沿用最后一次读数 %s', skipped, format_value(self.survey_value))
+            log.info(tr('贝果失败前补读调查收益：%s，沿用最后一次读数 %s'), skipped, format_value(self.survey_value))
         if self.fail_screenshot is not None:
             self.last_screenshot_time, self.last_screenshot = self.fail_screenshot
         return self.round_recoverable_fail(self.fail_reason or self.STATUS_FAIL_SURVEY)
@@ -2054,7 +2055,7 @@ class BagelRouteWalker(BagelOperation):
             self.electronic_small_steps = True
             self._release_forward()
             log.info(
-                '贝果电子保险箱进入短步阶段：距离 %.1fpx，半径 %.0fpx，按压 %.2fs',
+                tr('贝果电子保险箱进入短步阶段：距离 %.1fpx，半径 %.0fpx，按压 %.2fs'),
                 distance, ELECTRONIC_SMALL_STEP_RADIUS, SMALL_STEP_PRESS,
             )
         if self.last_input_frame is not None and self.last_screenshot_time <= self.last_input_frame:
@@ -2074,7 +2075,7 @@ class BagelRouteWalker(BagelOperation):
             if distance <= ARRIVE_RADIUS:
                 self._release_forward()
                 log.info(
-                    '贝果到点：第 %s 点判定距离 %.2fpx（判据 %.0fpx，位置 %s）',
+                    tr('贝果到点：第 %s 点判定距离 %.2fpx（判据 %.0fpx，位置 %s）'),
                     self.cursor + 1, distance, ARRIVE_RADIUS, position,
                 )
                 self._enter_point(self.route_index, self.cursor + 1)
@@ -2174,8 +2175,8 @@ class BagelRouteWalker(BagelOperation):
         if self.pickup_fast_since is None:
             return
         log.info(
-            '贝果拾取快轮结束（%s）：%s 轮 %.2fs，点按 %s 次',
-            reason, self.pickup_fast_rounds, time.monotonic() - self.pickup_fast_since,
+            tr('贝果拾取快轮结束（%s）：%s 轮 %.2fs，点按 %s 次'),
+            tr_status(reason), self.pickup_fast_rounds, time.monotonic() - self.pickup_fast_since,
             self.pickup_presses - self.pickup_fast_presses,
         )
         self.pickup_fast_since = None
@@ -2194,7 +2195,7 @@ class BagelRouteWalker(BagelOperation):
             return None
         self.locate_miss_since = None
         if point.kind == 'electronic_safe':
-            log.info('贝果第 %s 点（电子保险箱）移动中已进入解锁界面，直接接着解锁', self.cursor + 1)
+            log.info(tr('贝果第 %s 点（电子保险箱）移动中已进入解锁界面，直接接着解锁'), self.cursor + 1)
             self.current_kind = 'electronic_safe'
             self.target_wait_since = None
             return self.round_success('提示已出现')
@@ -2202,7 +2203,7 @@ class BagelRouteWalker(BagelOperation):
             return None
         self.stray_unlock_escapes += 1
         log.info(
-            '贝果第 %s 点（%s）移动中误开了电子保险箱解锁界面，按 esc 退出（第 %s 次）',
+            tr('贝果第 %s 点（%s）移动中误开了电子保险箱解锁界面，按 esc 退出（第 %s 次）'),
             self.cursor + 1, point.kind, self.stray_unlock_escapes,
         )
         self.ctx.controller.btn_press('esc', press_time=0.1)
@@ -2234,7 +2235,7 @@ class BagelRouteWalker(BagelOperation):
                 # 房卡门不开，后面的点都在门里，不能跳过；改为左右试探找刷卡提示。
                 return self._start_card_probe('到点等 1 秒没有刷卡提示')
             log.info(
-                '贝果第 %s 点（%s）原地等 %ss 无提示，跳到下一个点',
+                tr('贝果第 %s 点（%s）原地等 %ss 无提示，跳到下一个点'),
                 self.cursor + 1, KIND_LABELS.get(point.kind, point.kind), f'{BOX_PROMPT_SECONDS:.0f}',
             )
             self._enter_point(self.route_index, self.cursor + 1)
@@ -2288,7 +2289,7 @@ class BagelRouteWalker(BagelOperation):
                 f'连续 {ANGLE_FAIL_SECONDS:.0f}s 识别不到镜头朝向，停止移动',
             )
         self.input_worker.submit_turn(None)
-        return self.round_wait(f'未识别到朝向，停下等待（{missed:.1f}s）', wait=0.1)
+        return self.round_wait('未识别到朝向，停下等待（{v0:.1f}s）'.format(v0=missed), wait=0.1)
 
     def _cruise(
         self, point: BagelRoutePoint, position: tuple[float, float],
@@ -2319,7 +2320,7 @@ class BagelRouteWalker(BagelOperation):
             # 大偏差：松键停车等转向线程转到位再走。
             self.turning_in_place = True
             self._release_forward()
-            return self.round_wait(f'停车等转向 {angle_diff:.0f}度')
+            return self.round_wait('停车等转向 {v0:.0f}度'.format(v0=angle_diff))
         self.turning_in_place = False
         stuck = self._check_stuck(position, point, controller_angle)
         if stuck is not None:
@@ -2374,7 +2375,7 @@ class BagelRouteWalker(BagelOperation):
             return
         ratio = self.input_worker.turn_ratio
         samples = self.input_worker.turn_samples
-        log.info('贝果转向本局校准值 %.3f（%s 个有效样本）', ratio, samples)
+        log.info(tr('贝果转向本局校准值 %.3f（%s 个有效样本）'), ratio, samples)
         self.turn_memory.absorb(ratio, samples, self._turn_dx())
 
     def _turn_dx(self) -> float:
@@ -2487,7 +2488,7 @@ class BagelRouteWalker(BagelOperation):
         if point is not None and point.kind == KEYCARD_DOOR:
             return self._start_card_probe('碎步贴不上')
         log.info(
-            '贝果第 %s 点（%s）碎步 %ss 没贴上，跳到下一个点',
+            tr('贝果第 %s 点（%s）碎步 %ss 没贴上，跳到下一个点'),
             self.cursor + 1, self._current_kind_name(), f'{SMALL_STEP_TIMEOUT:.0f}',
         )
         self._enter_point(self.route_index, self.cursor + 1)
@@ -2535,7 +2536,7 @@ class BagelRouteWalker(BagelOperation):
         if stop_turn:
             # 大偏差：松键停车等转向线程转到位，不短按前进。
             self._release_forward()
-            return self.round_wait(f'{action}停车等转向 {angle_diff:.0f}度')
+            return self.round_wait('{v0}停车等转向 {v1:.0f}度'.format(v0=action, v1=angle_diff))
         self.turning_in_place = False
         blocked = self._check_slow_stuck(position)
         if blocked is not None:
@@ -2548,7 +2549,7 @@ class BagelRouteWalker(BagelOperation):
             return self.round_wait('等待前进短按可用', wait=0.02)
         self._record_input()
         wait = None if short_press else SLOW_STEP_WAIT
-        return self.round_wait(f'{action}前进', wait=wait)
+        return self.round_wait('{v0}前进'.format(v0=action), wait=wait)
 
     def _submit_slow_step_turn(self, distance: float, target_angle: float) -> None:
         """慢步等待期按距离与前进键状态分流提交转向，避免临近到点抢发微调占坑。
@@ -2627,7 +2628,7 @@ class BagelRouteWalker(BagelOperation):
         self._record_input()
         side = '右' if direction > 0 else '左'
         what = f'已在路径线上，试着往{side}侧' if on_line else f'往路径线{side}侧'
-        return self.round_wait(f'前进受阻，{what}移动一步', wait=SIDE_STEP_SECONDS + 0.1)
+        return self.round_wait('前进受阻，{v0}移动一步'.format(v0=what), wait=SIDE_STEP_SECONDS + 0.1)
 
     def _check_slow_stuck(self, position: tuple[float, float]) -> OperationRoundResult | None:
         """慢步或短步逼近时，位置停滞满 ``SLOW_STUCK_SECONDS`` 就按受阻处理。
@@ -2664,7 +2665,7 @@ class BagelRouteWalker(BagelOperation):
         self.opening_blocking_door = False
         self.blocked_door_taps += 1
         log.info(
-            '贝果第 %s 点前进受阻，前方是「%s」，点按 F 开门（第 %s/%s 次），位置 %s',
+            tr('贝果第 %s 点前进受阻，前方是「%s」，点按 F 开门（第 %s/%s 次），位置 %s'),
             self.cursor + 1, self._prompts().selected.text, self.blocked_door_taps, BLOCKED_DOOR_TAP_LIMIT, self.position,
         )
         self.input_worker.tap_interact(INTERACT_TAP_SECONDS)
@@ -2692,8 +2693,8 @@ class BagelRouteWalker(BagelOperation):
             self.point_started_at = self.retreat_since
             self._clear_stuck()
             log.warning(
-                '贝果第 %s 点（%s）%s，位置 %s，退回上一个点 (%.0f,%.0f) 重走（第 %s/%s 次）',
-                self.cursor + 1, point.kind if point is not None else '无', reason,
+                tr('贝果第 %s 点（%s）%s，位置 %s，退回上一个点 (%.0f,%.0f) 重走（第 %s/%s 次）'),
+                self.cursor + 1, point.kind if point is not None else '无', tr_status(reason),
                 self.last_position, origin.x, origin.y, self.retreats, RETREAT_LIMIT,
             )
             return self.round_wait('受阻，退回上一个点', wait=0.1)
@@ -2711,7 +2712,7 @@ class BagelRouteWalker(BagelOperation):
         if distance < RETREAT_ARRIVE_RADIUS or overdue:
             self._release_forward()
             log.info(
-                '贝果第 %s 点：%s上一个点 (%.0f,%.0f)，距 %.1fpx，位置 %s，重走本点',
+                tr('贝果第 %s 点：%s上一个点 (%.0f,%.0f)，距 %.1fpx，位置 %s，重走本点'),
                 self.cursor + 1, '已退回' if not overdue else f'{RETREAT_SECONDS:.0f}s 内没站准',
                 target.x, target.y, distance, position,
             )
@@ -2917,12 +2918,12 @@ class BagelRouteWalker(BagelOperation):
         try:
             area = self.ctx.screen_loader.get_area('贝果-局内', '调查收益')
             if area is None:
-                raise ValueError('缺少贝果画面区域：贝果-局内/调查收益')
+                raise ValueError(tr('缺少贝果画面区域：贝果-局内/调查收益'))
             matches = self.ctx.ocr_service.get_ocr_result_list(
                 self.last_screenshot, rect=area.pc_rect, crop_first=True, color_range=area.color_range,
             )
         except Exception:
-            log.error('读取调查收益失败，本次不计入统计', exc_info=True)
+            log.error(tr('读取调查收益失败，本次不计入统计'), exc_info=True)
             return None
         if not matches:
             return None

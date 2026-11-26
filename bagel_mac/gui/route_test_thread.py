@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from one_dragon.utils.log_utils import log
 from PySide6.QtCore import QThread, Signal
 
+from ..i18n import tr, tr_status
 from ..route.route_model import BagelRouteRef
 from ..route.route_recorder import GAME_FOREGROUND_TIMEOUT, wait_foreground
 from ..route.route_walker import BagelRouteWalker
@@ -65,20 +66,20 @@ class BagelRouteTestThread(QThread):
         """切到游戏后执行一次路线，结束后恢复空闲状态。"""
         try:
             if not self._activate_game():
-                self.done.emit(False, '游戏窗口未切到前台，未开始试跑')
+                self.done.emit(False, tr('游戏窗口未切到前台，未开始试跑'))
                 return
-            self.status_changed.emit('试跑中，按打点顺序移动')
+            self.status_changed.emit(tr('试跑中，按打点顺序移动'))
             self._layer_images = {item.name: item.image_path for item in load_map_locators()}
             # 先占用运行状态再创建执行器：执行器一创建就启动输入线程，
             # 占用失败时不能留下没人收尾的线程。
             if not self.ctx.run_context.start_running():
-                self.done.emit(False, '当前有其他功能在运行，请先结束它再试跑')
+                self.done.emit(False, tr('当前有其他功能在运行，请先结束它再试跑'))
                 return
             # 先登记运行权再检查停止请求：stop() 若在登记前到达，这里能看到停止请求；
             # 若在登记后到达，stop() 会结束运行状态，执行器随即退出。
             self._owns_run = True
             if self._stop_requested.is_set():
-                self.done.emit(False, '已手动停止试跑')
+                self.done.emit(False, tr('已手动停止试跑'))
                 return
             self._walker = BagelRouteWalker(self.ctx, route_ref=self.route_ref)
             result = self._run_with_state()
@@ -86,22 +87,22 @@ class BagelRouteTestThread(QThread):
             self.done.emit(False, str(error))
             return
         except Exception as error:
-            log.error('贝果路线试跑异常', exc_info=True)
-            self.done.emit(False, f'试跑异常：{error}')
+            log.error(tr('贝果路线试跑异常'), exc_info=True)
+            self.done.emit(False, tr('试跑异常：{error}').format(error=error))
             return
         finally:
             self.overlay_state.emit(None)
             self._restore_idle()
 
         if self._stop_requested.is_set():
-            self.done.emit(False, '已手动停止试跑')
+            self.done.emit(False, tr('已手动停止试跑'))
             return
         if result.success:
             points = len(self._walker.routes[0].points) if self._walker and self._walker.routes else 0
-            self.done.emit(True, f'试跑完成，{points} 点走完：{result.status}')
+            self.done.emit(True, tr('试跑完成，{points} 点走完：{status}').format(points=points, status=tr_status(result.status)))
             return
         detail = f'：{result.data}' if isinstance(result.data, str) and result.data else ''
-        self.done.emit(False, f'试跑失败：{result.status}{detail}')
+        self.done.emit(False, tr('试跑失败：{status}{detail}').format(status=tr_status(result.status), detail=detail))
 
     def _run_with_state(self):
         """跑执行器，同时按固定间隔把状态推给悬浮窗。
@@ -111,7 +112,7 @@ class BagelRouteTestThread(QThread):
         """
         walker = self._walker
         if walker is None:
-            raise ValueError('执行器未创建')
+            raise ValueError(tr('执行器未创建'))
         reporter = _StateReporter(
             walker, self.overlay_state, self._layer_images, self._stop_requested,
         )
@@ -143,7 +144,7 @@ class BagelRouteTestThread(QThread):
         try:
             self.ctx.controller.stop_moving_forward()
         except Exception:
-            log.error('试跑收尾松开前进键失败', exc_info=True)
+            log.error(tr('试跑收尾松开前进键失败'), exc_info=True)
         if not self.ctx.run_context.is_context_stop:
             self.ctx.run_context.stop_running()
 
@@ -179,7 +180,7 @@ class _StateReporter(QThread):
             try:
                 snapshot = self.walker.state_snapshot()
             except Exception:
-                log.error('读取执行状态失败', exc_info=True)
+                log.error(tr('读取执行状态失败'), exc_info=True)
                 return
             snapshot['layer_image'] = self.layer_images.get(str(snapshot.get('layer', '')))
             self.signal.emit(snapshot)
@@ -200,14 +201,25 @@ def decision_lines(snapshot: dict[str, object]) -> list[str]:
     route_name = str(snapshot.get('route_name') or snapshot.get('route_id') or '')
     points = snapshot.get('points') or []
     # 决策文字是「节点 · 状态」，状态里也可能带「·」，只按第一个拆成两行。
-    node, _, status = str(snapshot.get('decision') or '准备中').partition(' · ')
-    lines = [f'节点 {node}', f'状态 {status or "—"}']
-    lines.append(f'路线 {route_name} · {cursor}/{total}' if route_name else '路线 识别出生点中')
+    node, _, status = str(snapshot.get('decision') or tr('准备中')).partition(' · ')
+    lines = [
+        tr('节点 {node}').format(node=node),
+        tr('状态 {status}').format(status=tr_status(status) if status else '—'),
+    ]
+    lines.append(
+        tr('路线 {name} · {cursor}/{total}').format(name=route_name, cursor=cursor, total=total)
+        if route_name else tr('路线 识别出生点中')
+    )
     distance = snapshot.get('distance')
     distance_text = '—' if distance is None else f'{float(distance):.0f}px'
     if 0 <= cursor < len(points):
         kind = points[cursor][0]
-        lines.append(f'目标 {KIND_LABELS.get(kind, kind)}（{distance_text}）')
+        kind_label = KIND_LABELS.get(kind, kind)
+        lines.append(
+            tr('目标 {kind}（{distance}）').format(
+                kind=tr(kind_label), distance=distance_text,
+            )
+        )
     else:
-        lines.append(f'目标 —（{distance_text}）')
+        lines.append(tr('目标 —（{distance}）').format(distance=distance_text))
     return lines

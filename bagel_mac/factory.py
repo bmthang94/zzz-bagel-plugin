@@ -7,6 +7,7 @@ from one_dragon.base.operation.application.application_factory import Applicatio
 from . import const
 from .app import BagelApp
 from .config import BagelConfig
+from .i18n import tr
 from .run_record import BagelRunRecord
 
 if TYPE_CHECKING:
@@ -19,6 +20,8 @@ class BagelFactory(ApplicationFactory):
     def __init__(self, ctx: ZContext) -> None:
         """保存上下文，实例配置由工厂缓存管理。"""
         super().__init__(const)
+        # 应用名只用于显示；主程序每次加载会重新注入，翻译不会写进配置。
+        self.app_name = tr(const.APP_NAME)
         self.ctx: ZContext = ctx
 
     def create_application(self, instance_idx: int, group_id: str) -> BagelApp:

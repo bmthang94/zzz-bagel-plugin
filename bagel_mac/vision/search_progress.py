@@ -14,6 +14,7 @@ from .slots import (
 
 if TYPE_CHECKING:
     from .item_vision import BagelSlotMark
+from ..i18n import tr
 
 
 class BagelSearchProgress:
@@ -43,7 +44,7 @@ class BagelSearchProgress:
         if self.frame_time is not None and frame_time <= self.frame_time:
             return
         if self.states and len(states) != len(self.states):
-            raise ValueError('结果格数量变化，不能沿用原搜查登记')
+            raise ValueError(tr('结果格数量变化，不能沿用原搜查登记'))
         if not self.states:
             self._empty_frames = [0] * len(states)
         was_registered = self.registered

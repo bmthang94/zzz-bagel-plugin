@@ -12,6 +12,7 @@ from cv2.typing import MatLike
 from one_dragon.utils.log_utils import log
 
 from .defs import get_plugin_data_dir
+from .i18n import tr
 
 if TYPE_CHECKING:
     from zzz_od.context.zzz_context import ZContext
@@ -57,10 +58,10 @@ def save_screenshot(ctx: ZContext, image: MatLike | None, prefix: str) -> Path |
         directory.mkdir(parents=True, exist_ok=True)
         written = cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
     except (OSError, cv2.error):
-        log.warning('保存贝果现场截图失败', exc_info=True)
+        log.warning(tr('保存贝果现场截图失败'), exc_info=True)
         return None
     if not written:
-        log.warning('保存贝果现场截图失败：%s', path)
+        log.warning(tr('保存贝果现场截图失败：%s'), path)
         return None
     return path
 
@@ -82,7 +83,7 @@ def prune_screenshots(ctx: ZContext, now: float | None = None) -> None:
             if match is not None and path.is_file():
                 shots.append((int(match.group(1)), path.stat().st_size, path))
     except OSError:
-        log.warning('读取贝果现场截图目录失败，本次不清理', exc_info=True)
+        log.warning(tr('读取贝果现场截图目录失败，本次不清理'), exc_info=True)
         return
 
     shots.sort(key=lambda shot: shot[0])
@@ -96,9 +97,9 @@ def prune_screenshots(ctx: ZContext, now: float | None = None) -> None:
             path.unlink()
         except OSError:
             # 图片可能正被看图软件占用；跳过这一张，下次任务启动再删。
-            log.warning('删除贝果现场截图失败：%s', path, exc_info=True)
+            log.warning(tr('删除贝果现场截图失败：%s'), path, exc_info=True)
             continue
         total -= size
         removed += 1
     if removed > 0:
-        log.info('贝果现场截图：删除 %s 张过期或超限的截图', removed)
+        log.info(tr('贝果现场截图：删除 %s 张过期或超限的截图'), removed)

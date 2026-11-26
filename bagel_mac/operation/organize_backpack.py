@@ -23,6 +23,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr
 from ..vision.item_vision import (
     ACTION_FILL,
     ACTION_STACK,
@@ -239,7 +240,7 @@ class BagelOrganizeBackpack(BagelOperation):
                     and time.monotonic() - self._pickup_at < _EMPTY_RECHECK_SECONDS):
                 self._empty_rechecked = True
                 return self.round_wait('背包暂显示 0 件，等待全部拾取刷新', wait=_EMPTY_RECHECK_WAIT)
-            log.info('贝果整理背包：背包 0 件，跳过整理')
+            log.info(tr('贝果整理背包：背包 0 件，跳过整理'))
             return self.round_success(self.STATUS_DONE)
         needed_rows = min(_BACKPACK_ROWS, max(1, -(-count // len(_BACKPACK_XS))))
         rows = self._visible_rows(header_y, self._visible_top)
@@ -252,10 +253,10 @@ class BagelOrganizeBackpack(BagelOperation):
         self._centers = tuple(
             Point(x, header_y + _FIRST_ROW_OFFSET + _ROW_STEP * row) for row in rows for x in _BACKPACK_XS
         )
-        log.info('贝果整理背包：背包 %s 件，标题 y=%s，可见第 %s 排（滚动 %s 次）',
+        log.info(tr('贝果整理背包：背包 %s 件，标题 y=%s，可见第 %s 排（滚动 %s 次）'),
                  count, header_y, '、'.join(str(row + 1) for row in rows) or '无', self._scrolls)
         if len(rows) < needed_rows:
-            log.warning('贝果整理背包：背包有 %s 排物品，只看得到 %s 排，其余不参与整理', needed_rows, len(rows))
+            log.warning(tr('贝果整理背包：背包有 %s 排物品，只看得到 %s 排，其余不参与整理'), needed_rows, len(rows))
         if not rows:
             return self.round_fail('背包格都不在可见区')
         return self.round_success('已定位背包格')
@@ -296,11 +297,11 @@ class BagelOrganizeBackpack(BagelOperation):
         if choice is None:
             return self.round_success(self.STATUS_DONE)
         if self._actions >= self.ACTION_LIMIT:
-            log.warning('贝果整理背包：已拖拽 %s 次，停止整理', self._actions)
+            log.warning(tr('贝果整理背包：已拖拽 %s 次，停止整理'), self._actions)
             return self.round_success(self.STATUS_DONE)
         target = next((mark for mark in safes if mark.index == choice.dest_index), None)
         log.info(
-            '贝果整理背包：%s %s 背包格 %s -> 安全箱格 %s（%s）；目标=%s，蓝图优先=%s%s',
+            tr('贝果整理背包：%s %s 背包格 %s -> 安全箱格 %s（%s）；目标=%s，蓝图优先=%s%s'),
             choice.mark.quality, choice.mark.item_type, choice.source_index + 1, choice.dest_index + 1,
             _KIND_LABEL[choice.kind],
             f'{target.quality} {target.item_type}' if target is not None else '空格',
@@ -352,8 +353,8 @@ class BagelOrganizeBackpack(BagelOperation):
             self._repeated += 1
             self._pending_before = after.copy()
             self._drag(source, dest)
-            return self.round_wait(f'整理画面未确认，第 {self._repeated} 次重拖', wait=0.7)
-        log.warning('贝果整理背包：背包格 %s 拖拽后安全箱没有变化，跳过这一格', source + 1)
+            return self.round_wait('整理画面未确认，第 {v0} 次重拖'.format(v0=self._repeated), wait=0.7)
+        log.warning(tr('贝果整理背包：背包格 %s 拖拽后安全箱没有变化，跳过这一格'), source + 1)
         if self.ledger is not None:
             self.ledger.cancel_transfer()
         self._skipped.add(source)
@@ -388,7 +389,7 @@ class BagelOrganizeBackpack(BagelOperation):
             self._actions += 1
             self.ctx.controller.drag_to(end=source_center, start=destination, timing=self._drag_timing())
             log.warning(
-                '贝果整理背包：叠放后安全箱第 %s 格图标变了，不是同一种物品，已把该格拖回背包格 %s',
+                tr('贝果整理背包：叠放后安全箱第 %s 格图标变了，不是同一种物品，已把该格拖回背包格 %s'),
                 dest + 1, source + 1,
             )
             return self.round_success(_STATUS_NEXT, wait=0.7)
@@ -397,15 +398,15 @@ class BagelOrganizeBackpack(BagelOperation):
                 self.ledger.confirm_transfer()
             self.stacked += 1
             self._clear_pending()
-            log.info('贝果整理背包：背包格 %s 已叠到安全箱第 %s 格', source + 1, dest + 1)
+            log.info(tr('贝果整理背包：背包格 %s 已叠到安全箱第 %s 格'), source + 1, dest + 1)
             return self.round_success(_STATUS_NEXT, wait=0.2)
         if self._repeated < self.DRAG_REPEAT_LIMIT:
             self._repeated += 1
             self._pending_before = after.copy()
             self._drag(source, dest)
-            return self.round_wait(f'叠放画面无变化，第 {self._repeated} 次重拖', wait=0.7)
+            return self.round_wait('叠放画面无变化，第 {v0} 次重拖'.format(v0=self._repeated), wait=0.7)
         log.info(
-            '贝果整理背包：背包格 %s 叠到安全箱第 %s 格 %s 次都没变化（可能已叠满），改走空格或对换',
+            tr('贝果整理背包：背包格 %s 叠到安全箱第 %s 格 %s 次都没变化（可能已叠满），改走空格或对换'),
             source + 1, dest + 1, self.DRAG_REPEAT_LIMIT + 1,
         )
         if self.ledger is not None:
@@ -431,7 +432,7 @@ class BagelOrganizeBackpack(BagelOperation):
                 return self.round_fail(previous.status or '容器内整理背包失败', data=previous.data)
             if self._backpack_open():
                 record_safe_items(self.ctx, self.last_screenshot, self.ledger)
-            log.info('贝果整理背包（容器内）：填入安全箱 %s 件，对换 %s 件，叠放 %s 件，跳过 %s 格',
+            log.info(tr('贝果整理背包（容器内）：填入安全箱 %s 件，对换 %s 件，叠放 %s 件，跳过 %s 格'),
                      self.moved, self.swapped, self.stacked, len(self._skipped))
             return self.round_success(
                 self.STATUS_DONE,
@@ -439,7 +440,7 @@ class BagelOrganizeBackpack(BagelOperation):
             )
         if (self.round_by_find_area(self.last_screenshot, '战斗画面', '按键-普通攻击').is_success
                 or self._has('按钮-退出战斗', '战斗-菜单')):
-            log.info('贝果整理背包：填入安全箱 %s 件，对换 %s 件，叠放 %s 件，跳过 %s 格',
+            log.info(tr('贝果整理背包：填入安全箱 %s 件，对换 %s 件，叠放 %s 件，跳过 %s 格'),
                      self.moved, self.swapped, self.stacked, len(self._skipped))
             return self.round_success(
                 self.STATUS_DONE,
@@ -464,7 +465,7 @@ class BagelOrganizeBackpack(BagelOperation):
             if mark.quality == QUALITY_UNKNOWN:
                 if mark.index not in self._logged_unknown:
                     self._logged_unknown.add(mark.index)
-                    log.info('贝果整理背包：背包格 %s 品质认不出（类型=%s），不拖', mark.index + 1, mark.item_type)
+                    log.info(tr('贝果整理背包：背包格 %s 品质认不出（类型=%s），不拖'), mark.index + 1, mark.item_type)
                 continue
             marks.append(mark)
         return marks

@@ -24,6 +24,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget
 
+from ..i18n import tr
 from ..route.route_model import POINT_KINDS
 
 if TYPE_CHECKING:
@@ -89,7 +90,7 @@ class BagelRecordOverlay(QWidget):
     def __init__(self) -> None:
         """创建无边框置顶窗口，默认不抢占游戏焦点。"""
         super().__init__(None)
-        self.setWindowTitle('贝果路线录制')
+        self.setWindowTitle(tr('贝果路线录制'))
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.Tool
@@ -457,12 +458,12 @@ class BagelRecordOverlay(QWidget):
             painter.setBrush(color)
             painter.drawEllipse(left, y + 5, 10, 10)
             painter.setPen(TEXT_COLOR)
-            painter.drawText(key_left, y + 5 + metrics.ascent(), key)
+            painter.drawText(key_left, y + 5 + metrics.ascent(), tr(key))
             painter.setPen(color)
             painter.drawText(
                 key_left + max(20, metrics.horizontalAdvance(key) + 6),
                 y + 5 + metrics.ascent(),
-                name,
+                tr(name),
             )
 
     @staticmethod

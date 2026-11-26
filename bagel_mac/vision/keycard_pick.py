@@ -17,6 +17,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import str_utils
 
+from ..i18n import tr
 from .slots import slot_occupied
 from .template import load_template
 
@@ -262,7 +263,7 @@ class RowTracker:
         """在列表顶部创建：第 1 个完整行记为第 0 行。"""
         phase = row_phase(rows)
         if phase is None:
-            raise ValueError('列表里没有完整行，无法建立滚动记账')
+            raise ValueError(tr('列表里没有完整行，无法建立滚动记账'))
         self.origin: int = rows[0]
         self.phase: float = phase
         self.offset: int = 0

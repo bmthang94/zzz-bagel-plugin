@@ -16,6 +16,7 @@ from pynput import mouse
 from zzz_od.operation.zzz_operation import ZOperation
 
 from .. import screenshot
+from ..i18n import tr
 from ..screens import ensure_screens
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ def release_inputs_safely(ctx: ZContext) -> None:
     try:
         release_flow_inputs(ctx)
     except Exception:
-        log.error('释放流程输入失败', exc_info=True)
+        log.error(tr('释放流程输入失败'), exc_info=True)
 
 
 def register_release_at_exit(ctx: ZContext) -> None:
@@ -87,7 +88,7 @@ def register_release_at_exit(ctx: ZContext) -> None:
         try:
             release_inputs_safely(ctx)
         except Exception:
-            log.error('退出时释放流程输入失败', exc_info=True)
+            log.error(tr('退出时释放流程输入失败'), exc_info=True)
 
     atexit.register(_release_on_exit)
 
@@ -118,7 +119,7 @@ def execute_bagel_round(operation: Operation) -> OperationRoundResult:
     try:
         return Operation._execute_one_round(operation)
     except Exception as error:
-        log.error('贝果节点执行异常，停止并保留现场', exc_info=True)
+        log.error(tr('贝果节点执行异常，停止并保留现场'), exc_info=True)
         return operation.round_fail('异常', data=f'{type(error).__name__}：{error}')
 
 
@@ -185,6 +186,11 @@ class BagelOperation(ZOperation):
     STATUS_INTERRUPTED: str = '贝果搜查或解锁被打断'
     STATUS_ROUND_FAILED: str = '贝果局内流程失败'
     STATUS_CONTAINER_FAILED: str = '贝果容器靠近或开箱恢复失败'
+
+    @property
+    def display_name(self) -> str:
+        """日志与提示框里的操作名按界面语言显示；op_name 仍作节点标识，保持中文。"""
+        return tr('指令[ {op_name} ]').format(op_name=tr(self.op_name))
 
     def handle_init(self) -> None:
         """每个子操作开始前补回被冲掉的插件画面，并注册进程退出松键兜底。
@@ -270,9 +276,9 @@ class BagelOperation(ZOperation):
                 path = screenshot.save_screenshot(
                     self.ctx, self.last_screenshot, self.__class__.__name__,
                 )
-                log.error(f'贝果操作停止：{result.status}；原因：{result.data}；现场截图：{path}')
+                log.error(tr('贝果操作停止：{v0}；原因：{v1}；现场截图：{v2}').format(v0=result.status, v1=result.data, v2=path))
         except Exception:
-            log.error('保存贝果失败截图时发生异常', exc_info=True)
+            log.error(tr('保存贝果失败截图时发生异常'), exc_info=True)
         finally:
             self.ctx.run_context.event_bus.unlisten_all_event(self)
             super().after_operation_done(result)

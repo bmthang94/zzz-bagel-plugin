@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 from one_dragon.utils.log_utils import log
 
+from .i18n import tr, tr_status
 from .vision.item_vision import TYPE_RANK
 
 OUTCOME_SUCCESS: str = '成功入仓'
@@ -132,9 +133,12 @@ def red_counts(items: list[BagelItemRecord]) -> dict[str, int]:
 def format_red(counts: dict[str, int]) -> str:
     """按类型排序写成「装备 ×2、蓝图 ×1」；没有时为「无」。"""
     if not counts:
-        return '无'
+        return tr('无')
     ordered = sorted(counts.items(), key=lambda pair: -TYPE_RANK.get(pair[0], -99))
-    return '、'.join(f'{item_type} ×{count}' for item_type, count in ordered)
+    return tr('、').join(
+        tr('{item_type} ×{count}').format(item_type=tr(item_type), count=count)
+        for item_type, count in ordered
+    )
 
 
 @dataclass
@@ -233,8 +237,8 @@ class BagelRunStats:
         for item_type, count in red.items():
             self.red_totals[item_type] = self.red_totals.get(item_type, 0) + count
         log.info(
-            '贝果本局统计：第 %s 次入场 · %s · 调查收益 %s · 用时 %s · 红色：%s',
-            current.attempt, current.outcome, format_value(current.income),
+            tr('贝果本局统计：第 %s 次入场 · %s · 调查收益 %s · 用时 %s · 红色：%s'),
+            current.attempt, tr_status(current.outcome), format_value(current.income),
             format_duration(seconds), format_red(red),
         )
         return current
@@ -253,11 +257,11 @@ class BagelRunStats:
             for name in (OUTCOME_SUCCESS, OUTCOME_EMPTY, OUTCOME_FAILED, OUTCOME_UNSUPPORTED, OUTCOME_UNFINISHED)
             if self.outcome_counts.get(name)
         )
-        log.info('贝果收益统计：共 %s 局（%s）· 用时 %s', self.finished_rounds, counts, format_duration(self._elapsed()))
-        log.info('贝果收益统计：%s', self._income_text())
-        log.info('贝果收益统计：红色物品：%s', format_red(self.red_totals))
+        log.info(tr('贝果收益统计：共 %s 局（%s）· 用时 %s'), self.finished_rounds, counts, format_duration(self._elapsed()))
+        log.info(tr('贝果收益统计：%s'), self._income_text())
+        log.info(tr('贝果收益统计：红色物品：%s'), format_red(self.red_totals))
         if self.sale_count:
-            log.info('贝果出售统计：出售 %s 次，共 %s 齿轮硬币%s', self.sale_count, self.sale_coins,
+            log.info(tr('贝果出售统计：出售 %s 次，共 %s 齿轮硬币%s'), self.sale_count, self.sale_coins,
                      f'（{self.sale_unknown} 次未读到）' if self.sale_unknown else '')
 
     def summary(self, stop_reason: str | None) -> str | None:
@@ -268,14 +272,19 @@ class BagelRunStats:
         """
         if not self.finished_rounds:
             return None
-        lines = [] if stop_reason is None else [f'已停止：{stop_reason}']
+        lines = (
+            [] if stop_reason is None
+            else [tr('已停止：{stop_reason}').format(stop_reason=tr_status(stop_reason))]
+        )
         lines.append(
-            f'成功 {self.outcome_counts.get(OUTCOME_SUCCESS, 0)} 局 · '
-            f'失败 {self.outcome_counts.get(OUTCOME_FAILED, 0)} 局 · '
-            f'用时 {format_duration(self._elapsed())}'
+            tr('成功 {success} 局 · 失败 {failed} 局 · 用时 {duration}').format(
+                success=self.outcome_counts.get(OUTCOME_SUCCESS, 0),
+                failed=self.outcome_counts.get(OUTCOME_FAILED, 0),
+                duration=format_duration(self._elapsed()),
+            )
         )
         lines.append(self._income_text())
-        lines.append(f'红色物品：{format_red(self.red_totals)}')
+        lines.append(tr('红色物品：{items}').format(items=format_red(self.red_totals)))
         return '\n'.join(lines)
 
     def record_sale(self, coins: int | None) -> None:
@@ -283,11 +292,11 @@ class BagelRunStats:
         self.sale_count += 1
         if coins is None:
             self.sale_unknown += 1
-            log.info('贝果出售统计：本次出售获得未读到；累计出售 %s 次', self.sale_count)
+            log.info(tr('贝果出售统计：本次出售获得未读到；累计出售 %s 次'), self.sale_count)
             return
         self.sale_coins += coins
         log.info(
-            '贝果出售统计：本次获得 %s 齿轮硬币；累计出售 %s 次，共 %s（%s 次未读到）',
+            tr('贝果出售统计：本次获得 %s 齿轮硬币；累计出售 %s 次，共 %s（%s 次未读到）'),
             coins, self.sale_count, self.sale_coins, self.sale_unknown,
         )
 
@@ -300,8 +309,18 @@ class BagelRunStats:
         notes: list[str] = []
         hours = self._elapsed() / 3600
         if hours > 0:
-            notes.append(f'每小时约 {format_value(round(self.total_income / hours))}')
+            notes.append(
+                tr('每小时约 {value}').format(
+                    value=format_value(round(self.total_income / hours)),
+                )
+            )
         if self.income_unknown_rounds:
-            notes.append(f'{self.income_unknown_rounds} 局未读到，未计入')
-        suffix = f'（{"；".join(notes)}）' if notes else ''
-        return f'调查收益合计 {format_value(self.total_income)}{suffix}'
+            notes.append(
+                tr('{count} 局未读到，未计入').format(count=self.income_unknown_rounds)
+            )
+        suffix = (
+            tr('（{notes}）').format(notes=tr('；').join(notes)) if notes else ''
+        )
+        return tr('调查收益合计 {value}{suffix}').format(
+            value=format_value(self.total_income), suffix=suffix,
+        )

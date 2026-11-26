@@ -13,6 +13,7 @@ from .defs import (
     CLEAN_TYPES,
     DIFFICULTY_HAZARD,
 )
+from .i18n import tr
 
 if TYPE_CHECKING:
     from .config import BagelConfig
@@ -187,74 +188,74 @@ def log_start(config: BagelConfig, room_name: str | None = None) -> None:
     limit = str(config.max_success_rounds) if config.max_success_rounds else '不限'
     if config.is_keycard:
         log.info(
-            '开房卡模式：即将进入城郊幻境%s，开「%s」。成功次数上限：%s。连续失败上限：%s。'
-            '成功指刷开房卡门且有物资入仓。',
+            tr('开房卡模式：即将进入城郊幻境%s，开「%s」。成功次数上限：%s。连续失败上限：%s。'
+            '成功指刷开房卡门且有物资入仓。'),
             config.run_difficulty, room_name or config.keycard_room, limit, config.max_consecutive_failures,
         )
         if config.auto_buy_keycard:
-            log.info('自动购买房卡：开启，缺卡时自动前往常驻商店购买 %s 张（上限 30 张）。', config.buy_keycard_count)
+            log.info(tr('自动购买房卡：开启，缺卡时自动前往常驻商店购买 %s 张（上限 30 张）。'), config.buy_keycard_count)
         else:
-            log.info('仓库没有该房间的卡（不自动购买）或刷卡处显示没有该卡时任务结束。')
+            log.info(tr('仓库没有该房间的卡（不自动购买）或刷卡处显示没有该卡时任务结束。'))
         if config.keycard_reserve > 0:
             log.info(
-                '保留张数：%s。每次挑卡前翻完仓库全部页，按图标数该房间的卡（不点开、不含安全箱），'
-                '不多于 %s 张就不再挑卡，任务结束。',
+                tr('保留张数：%s。每次挑卡前翻完仓库全部页，按图标数该房间的卡（不点开、不含安全箱），'
+                '不多于 %s 张就不再挑卡，任务结束。'),
                 config.keycard_reserve, config.keycard_reserve,
             )
     else:
         log.info(
-            '即将进入雅努斯%s。成功次数上限：%s。连续失败上限：%s。',
+            tr('即将进入雅努斯%s。成功次数上限：%s。连续失败上限：%s。'),
             config.difficulty,
             limit,
             config.max_consecutive_failures,
         )
     log.info(
-        '蓝图优先：%s。仅影响局内入箱，仓库出售按当前方案执行。',
+        tr('蓝图优先：%s。仅影响局内入箱，仓库出售按当前方案执行。'),
         '开启' if config.blueprint_priority else '关闭',
     )
     if config.auto_clean_warehouse:
         log.info(
-            '出售间隔：%s 次非空入仓；正常达到成功上限时补卖。计数不跨任务。',
+            tr('出售间隔：%s 次非空入仓；正常达到成功上限时补卖。计数不跨任务。'),
             config.sell_interval,
         )
         log.info(
-            '满仓或入仓后残留时，最多出售一轮，一轮包含方案的全部步骤；有残留再入仓一次，仍残留或状态不明则停止。安全箱物品也在筛选范围内。'
+            tr('满仓或入仓后残留时，最多出售一轮，一轮包含方案的全部步骤；有残留再入仓一次，仍残留或状态不明则停止。安全箱物品也在筛选范围内。')
         )
         groups = config.clean_filter_groups()
         custom = config.clean_mode == CLEAN_MODE_CUSTOM
-        log.info('自动出售已开启，使用%s方案，共 %s 步：', '自定义' if custom else '默认', len(groups))
+        log.info(tr('自动出售已开启，使用%s方案，共 %s 步：'), '自定义' if custom else '默认', len(groups))
         for index, areas in enumerate(groups, start=1):
             types = '、'.join(name for name in CLEAN_TYPES if f'筛选-{name}' in areas)
             qualities = '/'.join(name for name in CLEAN_QUALITIES if f'筛选-{name}' in areas)
-            log.info('第 %s 步：类型「%s」；品质「%s」。', index, types, qualities)
+            log.info(tr('第 %s 步：类型「%s」；品质「%s」。'), index, types, qualities)
         skipped = config.keycard_skipped_steps()
         if skipped:
-            log.info('开房卡模式不出售门禁卡：自定义第 %s 步只含门禁卡，整步跳过。', '、'.join(map(str, skipped)))
+            log.info(tr('开房卡模式不出售门禁卡：自定义第 %s 步只含门禁卡，整步跳过。'), '、'.join(map(str, skipped)))
         elif config.is_keycard and custom:
-            log.info('开房卡模式不出售门禁卡：自定义步骤里的「门禁卡」已去掉。')
+            log.info(tr('开房卡模式不出售门禁卡：自定义步骤里的「门禁卡」已去掉。'))
         if not custom:
-            log.info('默认保留 S 品质其他物品，包括金色蓝图和材料；同时保留全部 Z 品质、装备、战术道具和门禁卡。')
+            log.info(tr('默认保留 S 品质其他物品，包括金色蓝图和材料；同时保留全部 Z 品质、装备、战术道具和门禁卡。'))
         elif any('筛选-其他' in areas and '筛选-S' in areas for areas in groups):
-            log.info('当前自定义方案包含 S 品质其他物品，金色蓝图和 S 品质材料也会出售。')
-        log.info('同一步内类型和品质须同时符合。已有库存也会出售。')
+            log.info(tr('当前自定义方案包含 S 品质其他物品，金色蓝图和 S 品质材料也会出售。'))
+        log.info(tr('同一步内类型和品质须同时符合。已有库存也会出售。'))
     else:
-        log.info('清理仓库已关闭。程序只入仓，不出售物品。')
+        log.info(tr('清理仓库已关闭。程序只入仓，不出售物品。'))
     log.info(
-        '空箱结算跳过出售，仍核对安全箱和仓库容量；安全箱为空且容量可读时，满仓也可继续。'
+        tr('空箱结算跳过出售，仍核对安全箱和仓库容量；安全箱为空且容量可读时，满仓也可继续。')
     )
     log.info(
-        '首次入场时，程序先传送到「录像店－房间」，再从快捷手册进入贝果。'
-        '后续各局正常返回主页面时，不重复传送。'
+        tr('首次入场时，程序先传送到「录像店－房间」，再从快捷手册进入贝果。'
+        '后续各局正常返回主页面时，不重复传送。')
     )
     if config.is_keycard:
-        log.info('开房卡模式首次入场时先清空全部携带，再从仓库挑卡；之后的入场携带不符时停止。随后核对零投资。')
+        log.info(tr('开房卡模式首次入场时先清空全部携带，再从仓库挑卡；之后的入场携带不符时停止。随后核对零投资。'))
     elif config.difficulty == DIFFICULTY_HAZARD:
-        log.info('%s随后核对零携带和零投资。', LOADOUT_HINT)
+        log.info(tr('%s随后核对零携带和零投资。'), tr(LOADOUT_HINT))
     else:
-        log.info('%s随后核对零携带。', LOADOUT_HINT)
+        log.info(tr('%s随后核对零携带。'), tr(LOADOUT_HINT))
     log.info(
-        '出生点重选规则：只收集已在路线编辑器中开启路线（开房卡为入口段）的出生点；其他出生点退出重选，'
-        '不计成功、不清理仓库、不计入连续失败，重选次数不限；如需结束请手动停止。'
+        tr('出生点重选规则：只收集已在路线编辑器中开启路线（开房卡为入口段）的出生点；其他出生点退出重选，'
+        '不计成功、不清理仓库、不计入连续失败，重选次数不限；如需结束请手动停止。')
     )
 
 
@@ -262,59 +263,60 @@ def stop_guidance(status: str | None) -> str:
     """依据已返回的原因补充处理建议，不改变成功与失败判定。"""
     reason = status or ''
     if '视为爆仓' in reason or '自动清理关闭' in reason:
-        return '安全箱尚未清空，程序已停止。本局不计成功；请核对安全箱和仓库中的物品，再人工腾出空位。'
+        return tr('安全箱尚未清空，程序已停止。本局不计成功；请核对安全箱和仓库中的物品，再人工腾出空位。')
     if '仅部分入仓' in reason and '安全箱' in reason:
-        return (
+        return tr(
             '部分物品已入仓，安全箱尚未清空。程序已停止重复点击「放入仓库」。'
             '本局不计成功，也不会继续清理仓库或开始下一局。'
             '请核对安全箱中的剩余物品，再检查仓库中已收到的物品。'
         )
     if '仅部分入仓' in reason:
-        return (
+        return tr(
             '部分物品已入仓，携带物尚未清空。程序已停止重复点击「放入仓库」。'
             '本局不计成功，也不会继续清理仓库或开始下一局。'
             '请核对安全箱和背包中的剩余物品，再检查仓库中已收到的物品。'
         )
     if '仓库已满且安全箱仍有物资' in reason:
-        return (
+        return tr(
             '仓库已满，安全箱仍有物品。程序已停止入仓。本局不计成功。'
             '程序不会出售物品腾出空位，也不会开始下一局。'
             '请先核对安全箱和仓库中的物品，再人工腾出仓库空位。'
         )
     if '连续 3 局安全箱为空' in reason:
-        return '连续 3 次空箱结算，未计成功。程序已完成返回流程，停止重开。'
+        return tr('连续 3 次空箱结算，未计成功。程序已完成返回流程，停止重开。')
     if '已完成仓库结算，停止自动重开' in reason:
-        return (
+        return tr(
             '连续失败达到上限，失败局已完成结算，不再重开。本局不计成功。当前停在结算仓库。'
             '请查看日志和现场截图，检查失败原因，再决定是否重新启动任务。'
         )
-    if '自定义清理每一步都要同时选择类型和品质' in reason:
-        return INCOMPLETE_SALE_HINT
+    # 判定词与 config.validate 抛出的文案同一份，经 tr 后两种语言都能匹配。
+    if tr('自定义清理每一步都要同时选择类型和品质') in reason:
+        return tr(INCOMPLETE_SALE_HINT)
     if reason == '人工结束':
-        return '任务已按停止操作结束。请核对当前画面和携带物，再决定是否重新启动。'
-    return '程序已停止，请检查现场。请先处理上述原因，再决定是否重新启动任务。'
+        return tr('任务已按停止操作结束。请核对当前画面和携带物，再决定是否重新启动。')
+    return tr('程序已停止，请检查现场。请先处理上述原因，再决定是否重新启动任务。')
 
 
 def log_screenshot(path: Path | None) -> None:
     """只展示确实保存下来的现场截图路径。"""
     try:
         if path is not None and path.is_file() and path.stat().st_size > 0:
-            log.info('现场截图：%s', path.resolve())
+            log.info(tr('现场截图：%s'), path.resolve())
             return
     except OSError:
-        log.warning('无法核对现场截图文件。', exc_info=True)
-    log.warning('本次未确认保存现场截图。请查看相关日志。')
+        log.warning(tr('无法核对现场截图文件。'), exc_info=True)
+    log.warning(tr('本次未确认保存现场截图。请查看相关日志。'))
 
 
 def log_feedback() -> None:
     """从实际日志处理器读取路径，兼容自定义日志位置。"""
-    log.info(FEEDBACK_HINT)
+    log.info(tr(FEEDBACK_HINT))
     paths = {
         str(handler.baseFilename)
         for handler in log.handlers
         if hasattr(handler, 'baseFilename')
     }
     if paths:
-        log.info('当前日志：%s', '、'.join(sorted(paths)))
+        log.info(tr('当前日志：%s'), tr('、').join(sorted(paths)))
     else:
-        log.info('日志默认在程序运行目录的 .log/；如已配置其他路径，请以该路径为准。')
+        log.info(tr('日志默认在程序运行目录的 .log/；如已配置其他路径，请以该路径为准。'))

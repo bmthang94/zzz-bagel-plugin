@@ -9,6 +9,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr, tr_status
 from ..stats import (
     QUALITY_RED,
     BagelSafeLedger,
@@ -307,7 +308,7 @@ class BagelStoreSafe(BagelOperation):
         progress_time = self._search_progress.last_progress_time
         if progress_time is not None and elapsed - progress_time >= self.NO_PROGRESS_SECONDS:
             log.warning(
-                '贝果搜查连续 %.0f 秒无确认进展：%s',
+                tr('贝果搜查连续 %.0f 秒无确认进展：%s'),
                 self.NO_PROGRESS_SECONDS, self._search_progress.summary(),
             )
             self._clear_pending()
@@ -335,7 +336,7 @@ class BagelStoreSafe(BagelOperation):
         for index in progress.confirmed:
             if index not in progress.handled:
                 progress.mark_handled(index, '按优先级保留', self.operation_usage_time)
-        log.info('贝果搜查完成：%s', progress.summary())
+        log.info(tr('贝果搜查完成：%s'), progress.summary())
         return self.round_success(status, data={'moved': self.moved})
 
     def _wait_for_safe_slots(self) -> OperationRoundResult:
@@ -370,7 +371,7 @@ class BagelStoreSafe(BagelOperation):
         for index in sorted(previous.keys() - current.keys()):
             details.append(f'格 {index + 1}：不再进入本轮物品识别')
         self._logged_items[area] = items
-        log.info('贝果物品识别：%s，当前 %s 格；%s', area, len(items), '；'.join(details) or '无已识别物品')
+        log.info(tr('贝果物品识别：%s，当前 %s 格；%s'), area, len(items), '；'.join(details) or '无已识别物品')
 
     def _ready_results(self, results: list[BagelSlotMark]) -> list[BagelSlotMark]:
         """确认结果格类型，金币记为已跳过，其他物品交给原优先级选择。"""
@@ -384,7 +385,7 @@ class BagelStoreSafe(BagelOperation):
                 ready.append(mark)
         snapshot = self._search_progress.summary()
         if snapshot != self._logged_progress:
-            log.info('贝果搜查登记：%s', snapshot)
+            log.info(tr('贝果搜查登记：%s'), snapshot)
             self._logged_progress = snapshot
         return ready
 
@@ -466,7 +467,7 @@ class BagelStoreSafe(BagelOperation):
             f'{previous_item.quality} {previous_item.item_type}' if previous_item is not None else '空格'
         )
         log.info(
-            '贝果入箱：%s %s 结果格 %s %s -> %s格 %s %s；选择时目标=%s，蓝图优先=%s%s',
+            tr('贝果入箱：%s %s 结果格 %s %s -> %s格 %s %s；选择时目标=%s，蓝图优先=%s%s'),
             choice.mark.quality, choice.mark.item_type, choice.source_index + 1, source.tuple(),
             _DEST_LABEL[choice.kind], choice.dest_index + 1, destination.tuple(),
             destination_item, self.blueprint_priority, choice.quantity_note(),
@@ -530,7 +531,7 @@ class BagelStoreSafe(BagelOperation):
         source = self._result_centers[source_index]
         observed_type = identify_type(self.last_screenshot, source)
         log.info(
-            '贝果入箱：结果格 %s 当场复核为 %s %s，%s；跳过该格继续',
+            tr('贝果入箱：结果格 %s 当场复核为 %s %s，%s；跳过该格继续'),
             source_index + 1,
             identify_quality(self.last_screenshot, source),
             observed_type,
@@ -639,7 +640,7 @@ class BagelStoreSafe(BagelOperation):
                 self._pending_before = after.copy()
                 self._drag_item(source, destination)
                 return self.round_wait(
-                    f'入箱画面无变化，第 {self._drag_repeated} 次重拖', wait=0.7,
+                    '入箱画面无变化，第 {v0} 次重拖'.format(v0=self._drag_repeated), wait=0.7,
                 )
             # 重拖预算用完画面仍无变化：这一格游戏就是不让搬（金币直接进携带货币、
             # 不占安全箱格；别的物品也可能被拒绝），再拖也是一样的结果。跳过它继续装
@@ -710,7 +711,7 @@ class BagelStoreSafe(BagelOperation):
             self._clear_pending()
             self._drag_item(destination, source)
             log.warning(
-                '贝果入箱：叠放后安全箱第 %s 格图标变了，不是同一种物品，已把该格拖回结果格 %s',
+                tr('贝果入箱：叠放后安全箱第 %s 格图标变了，不是同一种物品，已把该格拖回结果格 %s'),
                 destination_index + 1, source_index + 1,
             )
             return self.round_success(_STATUS_RESELECT, wait=0.7)
@@ -723,7 +724,7 @@ class BagelStoreSafe(BagelOperation):
             self.moved += 1
             self.acted = True
             log.info(
-                '贝果入箱：结果格 %s 已叠到安全箱第 %s 格',
+                tr('贝果入箱：结果格 %s 已叠到安全箱第 %s 格'),
                 source_index + 1, destination_index + 1,
             )
             return self.round_success('继续装入', wait=0.2)
@@ -731,9 +732,9 @@ class BagelStoreSafe(BagelOperation):
             self._drag_repeated += 1
             self._pending_before = after.copy()
             self._drag_item(source, destination)
-            return self.round_wait(f'叠放画面无变化，第 {self._drag_repeated} 次重拖', wait=0.7)
+            return self.round_wait('叠放画面无变化，第 {v0} 次重拖'.format(v0=self._drag_repeated), wait=0.7)
         log.info(
-            '贝果入箱：结果格 %s 叠到安全箱第 %s 格 %s 次都没变化（可能已叠满），改走空格',
+            tr('贝果入箱：结果格 %s 叠到安全箱第 %s 格 %s 次都没变化（可能已叠满），改走空格'),
             source_index + 1, destination_index + 1, self.DRAG_REPEAT_LIMIT + 1,
         )
         self._stack_blocked.add((source_index, destination_index))
@@ -758,7 +759,7 @@ class BagelStoreSafe(BagelOperation):
         """超时和人工结束也撤销未确认的账本登记，已入箱记录保持不变。"""
         self._clear_pending()
         if not result.success:
-            log.warning('贝果搜查未完成：%s；%s', result.status, self._search_progress.summary())
+            log.warning(tr('贝果搜查未完成：%s；%s'), tr_status(result.status), self._search_progress.summary())
         super().after_operation_done(result)
 
     def _record_safe_items(self) -> None:
@@ -820,4 +821,4 @@ def record_safe_items(ctx: ZContext, screen: MatLike, ledger: BagelSafeLedger | 
             items[mark.index] = (mark.item_type, mark.quality, quantity)
         ledger.slot_items = items
     except Exception:
-        log.error('记录安全箱物品失败，本次不计入统计', exc_info=True)
+        log.error(tr('记录安全箱物品失败，本次不计入统计'), exc_info=True)

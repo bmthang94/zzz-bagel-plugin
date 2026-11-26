@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr
 from ..vision.slots import slot_crop
 from .operation import BagelOperation
 
@@ -81,7 +82,7 @@ class BagelTransferOperation(BagelOperation):
     def transfer_fail(self, reason: str) -> OperationRoundResult:
         """向上保留具体位置和已完成格数，基类负责保存现场。"""
         return self.round_fail(
-            f'启动清空失败：{self.source_label or "核对画面"}，{reason}；已转存 {self.moved} 格；{self.observation}',
+            '启动清空失败：{v0}，{v1}；已转存 {v2} 格；{v3}'.format(v0=self.source_label or "核对画面", v1=reason, v2=self.moved, v3=self.observation),
         )
 
     def read_again(self, reason: str) -> OperationRoundResult:
@@ -132,7 +133,7 @@ class BagelTransferOperation(BagelOperation):
         self.pending_checks = 0
         self.pending_started = time.monotonic()
         self._stable_image = None
-        log.info('贝果启动转存：开始双击%s，坐标=%s；已转存=%s格；%s',
+        log.info(tr('贝果启动转存：开始双击%s，坐标=%s；已转存=%s格；%s'),
                  label, center.tuple(), self.moved, self.observation)
         if not self.ctx.controller.click(center, press_time=0.08):
             return self.transfer_fail('双击物品的第一次点击失败')
@@ -142,12 +143,12 @@ class BagelTransferOperation(BagelOperation):
         if not self.ctx.controller.click(center, press_time=0.08):
             return self.transfer_fail('双击物品的第二次点击失败')
         self.pending_started = time.monotonic()
-        return self.round_wait(f'等待{label}双击转入仓库', wait=0.5)
+        return self.round_wait('等待{v0}双击转入仓库'.format(v0=label), wait=0.5)
 
     def finish_transfer(self) -> None:
         """仅在子操作确认物品去向后推进进度。"""
         self.moved += 1
-        log.info('贝果启动转存确认：%s，累计=%s格；%s',
+        log.info(tr('贝果启动转存确认：%s，累计=%s格；%s'),
                  self.source_label, self.moved, self.observation)
         self.pending = False
         self.read_misses = 0

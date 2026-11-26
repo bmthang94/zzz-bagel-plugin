@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from cv2.typing import MatLike
     from one_dragon.base.geometry.rectangle import Rect
     from zzz_od.context.zzz_context import ZContext
+from ..i18n import tr
 
 MINIMAP_AREA = ('贝果-局内', '定位小地图')
 """小地图裁剪区域，与导航共用同一份建档。"""
@@ -80,7 +81,9 @@ def is_foreground(hwnd: int) -> bool:
     Returns:
         前台时为 True。
     """
-    return int(ctypes.windll.user32.GetForegroundWindow()) == int(hwnd)
+    if hasattr(ctypes, 'windll'):
+        return int(ctypes.windll.user32.GetForegroundWindow()) == int(hwnd)
+    return True
 
 
 def wait_foreground(hwnd: int, timeout: float, stop: Event | None = None) -> bool:
@@ -211,7 +214,7 @@ class BagelPointRecorder:
             self.on_status(f'录制中，先在{self.spawn.name}按 1 打首个途径点')
             self.stop_reason = self._sample_loop(hwnd, area.pc_rect)
         except Exception as error:
-            log.error('贝果路线打点异常', exc_info=True)
+            log.error(tr('贝果路线打点异常'), exc_info=True)
             self.failure = f'录制异常：{error}'
             return
         finally:
@@ -226,7 +229,7 @@ class BagelPointRecorder:
                 activate=self.activate, started_at=self.route.started_at, keycard=self.keycard,
             )
         except (BagelRouteConfigError, ValueError) as error:
-            log.error('贝果路线打点保存失败', exc_info=True)
+            log.error(tr('贝果路线打点保存失败'), exc_info=True)
             self.failure = f'保存失败：{error}'
             return
         self.on_status(self.stop_reason)

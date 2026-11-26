@@ -7,6 +7,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.utils.log_utils import log
 
+from ..i18n import tr
 from ..screenshot import save_screenshot
 from ..vision.keycard_pick import (
     FILTER_ALL_POS,
@@ -253,7 +254,7 @@ class BagelPickKeycard(BagelOperation):
         if occupied is None:
             return self.round_retry('仓库安全箱格子状态不明', wait=0.5)
         if occupied:
-            return self.round_fail(f'安全箱已有物品（格 {occupied}），不挑卡')
+            return self.round_fail('安全箱已有物品（格 {v0}），不挑卡'.format(v0=occupied))
         if self.counting and (self.template_id is None or load_template(self.template_id) is None):
             return self.round_fail('没有该房间门禁卡的图标模板，无法按保留张数清点')
         return self.round_success()
@@ -333,11 +334,11 @@ class BagelPickKeycard(BagelOperation):
         """点网格上方的「门禁卡」类型筛选，标题显示门禁卡后开始找。"""
         header = self._header()
         if '门禁' in header:
-            log.info('贝果挑卡：已切到门禁卡筛选（%s）', header)
+            log.info(tr('贝果挑卡：已切到门禁卡筛选（%s）'), header)
             self.filter_ready = True
             return self.round_wait('已切到门禁卡筛选', wait=0.05)
         if self.filter_clicks >= FILTER_CHECKS:
-            log.warning('贝果挑卡：点了 %s 次门禁卡筛选，标题仍是「%s」，按当前筛选继续找', self.filter_clicks, header)
+            log.warning(tr('贝果挑卡：点了 %s 次门禁卡筛选，标题仍是「%s」，按当前筛选继续找'), self.filter_clicks, header)
             self.filter_ready = True
             return self.round_wait('门禁卡筛选未确认，继续', wait=0.05)
         self.filter_clicks += 1
@@ -357,7 +358,7 @@ class BagelPickKeycard(BagelOperation):
             reason: 失败原因，作为操作结果的状态。
         """
         path = save_screenshot(self.ctx, self.last_screenshot, 'BagelKeycardPickFail')
-        log.warning('贝果挑卡失败：%s；现场截图 %s', reason, path)
+        log.warning(tr('贝果挑卡失败：%s；现场截图 %s'), reason, path)
         return self._finish(self.round_fail(reason))
 
     def _restore_filter(self) -> OperationRoundResult:
@@ -370,7 +371,7 @@ class BagelPickKeycard(BagelOperation):
                 self.dismiss_clicks += 1
                 self.ctx.controller.click(TOOLTIP_DISMISS_POS, press_time=0.05)
                 return self.round_wait('切回筛选前关掉物品浮窗', wait=0.5)
-            log.warning('贝果挑卡：物品浮窗关不掉，没有切回全部筛选')
+            log.warning(tr('贝果挑卡：物品浮窗关不掉，没有切回全部筛选'))
             result = self.result
             self.result = None
             return result
@@ -379,7 +380,7 @@ class BagelPickKeycard(BagelOperation):
         untouched = self.filter_clicks == 0 and '门禁' not in header
         if '全部' in header or untouched or self.restore_clicks >= FILTER_CHECKS:
             if '全部' not in header and not untouched:
-                log.warning('贝果挑卡：没能切回全部筛选，标题「%s」', header)
+                log.warning(tr('贝果挑卡：没能切回全部筛选，标题「%s」'), header)
             result = self.result
             self.result = None
             if result.status in self.STOP_STATUSES:
@@ -402,7 +403,7 @@ class BagelPickKeycard(BagelOperation):
             self.top_rows = None
             self.top_arrow = None
             self.ctx.controller.scroll(-SCROLL_NOTCHES, GRID_SCROLL_POS)
-            return self.round_wait(f'第 {self.page + 1} 页向上滚动（唤出 ▼ 提示）', wait=0.6)
+            return self.round_wait('第 {v0} 页向上滚动（唤出 ▼ 提示）'.format(v0=self.page + 1), wait=0.6)
         screen = self.last_screenshot
         rows = grid_rows(screen)
         arrow = more_below(screen)
@@ -423,7 +424,7 @@ class BagelPickKeycard(BagelOperation):
             self.top_needed += 1
             self.top_extra = 0
             return self.round_wait('▼ 提示没出现，补发向上滚动', wait=0.05)
-        log.info('贝果挑卡：第 %s 页已发 %s 条向上滚动命令，第 1 行在 y=%s，▼ %s（像素 %s）',
+        log.info(tr('贝果挑卡：第 %s 页已发 %s 条向上滚动命令，第 1 行在 y=%s，▼ %s（像素 %s）'),
                  self.page + 1, self.top_sent, rows[0], '在' if arrow else '不在，按本页滚不动处理',
                  arrow_pixels(screen))
         self._reset_top()
@@ -468,7 +469,7 @@ class BagelPickKeycard(BagelOperation):
                     new_rows += 1
                     self.row_counts[key] = found
                 elif found != before:
-                    log.info('贝果挑卡清点：第 %s 页第 %s 行两次读数不同（%s、%s 张），取大',
+                    log.info(tr('贝果挑卡清点：第 %s 页第 %s 行两次读数不同（%s、%s 张），取大'),
                              self.page + 1, index, before, found)
                     self.row_counts[key] = max(before, found)
         self.counted = sum(self.row_counts.values())
@@ -477,8 +478,8 @@ class BagelPickKeycard(BagelOperation):
                 self.last_screenshot[GRID_RECT.y1:GRID_RECT.y2, GRID_RECT.x1:GRID_RECT.x2].copy())
         span = f'{min(indexes)}–{max(indexes)}' if indexes else '无'
         top = '、'.join(f'{cell.score:.3f}' for cell in cells[:6]) or '无'
-        log.info('贝果挑卡清点：第 %s 页已向下滚 %s 行，本屏 %s 行（行号 %s），新行 %s 行、%s 格有物，累计 %s 张；'
-                 '▼ 像素 %s；最高相似度 %s',
+        log.info(tr('贝果挑卡清点：第 %s 页已向下滚 %s 行，本屏 %s 行（行号 %s），新行 %s 行、%s 格有物，累计 %s 张；'
+                 '▼ 像素 %s；最高相似度 %s'),
                  self.page + 1, tracker.offset if tracker is not None else 0, len(rows), span, new_rows,
                  len(cells), self.counted, arrow_pixels(self.last_screenshot), top)
         return self._scroll_or_next_page()
@@ -491,11 +492,11 @@ class BagelPickKeycard(BagelOperation):
             offset = self.tracker.offset if self.tracker is not None else 0
             if known > offset + VISIBLE_ROWS and offset < PAGE_ROWS_MAX - VISIBLE_ROWS:
                 # ▼ 唤不出来：清点时已经滚到过更靠下的行，说明本页还能滚，不能按「到底」换页。
-                log.warning('贝果挑卡：第 %s 页 ▼ 不在（像素 %s），但清点时见过 %s 行、当前只滚到第 %s 行，'
-                            '按还能向下滚处理', self.page + 1, arrow_pixels(screen), known, offset)
+                log.warning(tr('贝果挑卡：第 %s 页 ▼ 不在（像素 %s），但清点时见过 %s 行、当前只滚到第 %s 行，'
+                            '按还能向下滚处理'), self.page + 1, arrow_pixels(screen), known, offset)
                 self._scroll_down()
-                return self.round_wait(f'第 {self.page + 1} 页 ▼ 不在但清点见过更多行，向下滚动一行', wait=0.6)
-            log.info('贝果挑卡：第 %s 页 ▼ 已消失，本页到底（已向下滚 %s 行，▼ 像素 %s）',
+                return self.round_wait('第 {v0} 页 ▼ 不在但清点见过更多行，向下滚动一行'.format(v0=self.page + 1), wait=0.6)
+            log.info(tr('贝果挑卡：第 %s 页 ▼ 已消失，本页到底（已向下滚 %s 行，▼ 像素 %s）'),
                      self.page + 1, offset, arrow_pixels(screen))
             return self._next_page()
         if self.tracker is not None and self.tracker.offset >= PAGE_ROWS_MAX - VISIBLE_ROWS:
@@ -503,7 +504,7 @@ class BagelPickKeycard(BagelOperation):
                 f'第 {self.page + 1} 页已向下滚 {self.tracker.offset} 行，▼ 提示仍在；一页最多 {PAGE_ROWS_MAX} 行，'
                 '记账或画面不对，停止并保留现场')
         self._scroll_down()
-        return self.round_wait(f'第 {self.page + 1} 页向下滚动一行', wait=0.6)
+        return self.round_wait('第 {v0} 页向下滚动一行'.format(v0=self.page + 1), wait=0.6)
 
     def _known_page_rows(self) -> int:
         """清点已记到的本页总行数（最大行号 + 1）；本页没记过返回 0。"""
@@ -544,7 +545,7 @@ class BagelPickKeycard(BagelOperation):
         if not stable:
             if self.settle_checks < SETTLE_MAX_CHECKS:
                 return self.round_wait('等列表滚动停稳', wait=SETTLE_WAIT)
-            log.warning('贝果挑卡：滚动后截了 %s 次列表仍在动，按当前画面继续', self.settle_checks)
+            log.warning(tr('贝果挑卡：滚动后截了 %s 次列表仍在动，按当前画面继续'), self.settle_checks)
         checks = self.settle_checks
         before = self.scroll_before
         self._clear_scroll_wait()
@@ -565,7 +566,7 @@ class BagelPickKeycard(BagelOperation):
                 # 结束时会先切回「全部」筛选再截现场图，那张图看不到失败瞬间，这里当场存滚动前后两张。
                 before_rows = grid_rows(before) if before is not None else None
                 log.warning(
-                    '贝果挑卡：滚动后行位置错位，滚动前行 %s、▼ %s，滚动后行 %s、▼ %s，停稳检查 %s 次',
+                    tr('贝果挑卡：滚动后行位置错位，滚动前行 %s、▼ %s，滚动后行 %s、▼ %s，停稳检查 %s 次'),
                     before_rows, more_below(before) if before is not None else None,
                     rows, arrow, checks,
                 )
@@ -574,10 +575,10 @@ class BagelPickKeycard(BagelOperation):
                 return self._fail(
                     f'第 {self.page + 1} 页滚动后行的位置与顶部不一致（{rows}），滚动不是整行，记账不可信，停止并保留现场')
         if effect == 'unknown':
-            log.info('贝果挑卡：第 %s 页第 %s 次滚动前后画面分不出动没动（整块同款卡），按滚了一行记账',
+            log.info(tr('贝果挑卡：第 %s 页第 %s 次滚动前后画面分不出动没动（整块同款卡），按滚了一行记账'),
                      self.page + 1, self.tracker.offset if self.tracker is not None else 0)
         if checks > 3:
-            log.info('贝果挑卡：滚动后第 %s 次截图列表才停稳', checks)
+            log.info(tr('贝果挑卡：滚动后第 %s 次截图列表才停稳'), checks)
         self.tried.clear()
         return None
 
@@ -586,12 +587,12 @@ class BagelPickKeycard(BagelOperation):
         if not self.counting:
             return self._no_card(reason)
         counted = self.counted or 0
-        log.info('贝果挑卡：清点完毕（%s），仓库有「%s」的门禁卡 %s 张（图标相似度不低于 %.2f），保留 %s 张',
+        log.info(tr('贝果挑卡：清点完毕（%s），仓库有「%s」的门禁卡 %s 张（图标相似度不低于 %.2f），保留 %s 张'),
                  reason, self.room_name, counted, KEYCARD_SCORE_MIN, self.reserve)
         if counted <= self.reserve:
             if self.count_crops:
                 path = save_screenshot(self.ctx, np.vstack(self.count_crops), 'BagelKeycardCount')
-                log.info('贝果挑卡：清点的各屏网格已拼图保存：%s', path)
+                log.info(tr('贝果挑卡：清点的各屏网格已拼图保存：%s'), path)
             return self._finish(self.round_fail(self.STATUS_RESERVE))
         self.counting = False
         self.page = 0
@@ -625,7 +626,7 @@ class BagelPickKeycard(BagelOperation):
         self._clear_scroll_wait()
         self.tried.clear()
         self.ctx.controller.click(PAGE_CENTERS[self.page], press_time=0.05)
-        return self.round_wait(f'切到仓库第 {self.page + 1} 页', wait=0.8)
+        return self.round_wait('切到仓库第 {v0} 页'.format(v0=self.page + 1), wait=0.8)
 
     def _confirm_page(self) -> OperationRoundResult | None:
         """等刚点的页签显示为选中；选中返回 None 继续，否则重点，点够次数仍没选中就停止。"""
@@ -639,7 +640,7 @@ class BagelPickKeycard(BagelOperation):
                 f'点了 {clicks} 次第 {self.page + 1} 页页签仍没选中（页签 {"、".join(states)}），停止并保留现场')
         self.page_clicks = clicks + 1
         self.ctx.controller.click(PAGE_CENTERS[self.page], press_time=0.05)
-        return self.round_wait(f'第 {self.page + 1} 页页签没选中，重点', wait=0.8)
+        return self.round_wait('第 {v0} 页页签没选中，重点'.format(v0=self.page + 1), wait=0.8)
 
     def _next_page(self) -> OperationRoundResult:
         self.page += 1
@@ -647,7 +648,7 @@ class BagelPickKeycard(BagelOperation):
         return self.round_wait('本页已到底，换下一页', wait=0.1)
 
     def _no_card(self, reason: str) -> OperationRoundResult:
-        log.info('贝果挑卡：%s，共点开 %s 格，没有找到「%s」的门禁卡', reason, self.opened, self.room_name)
+        log.info(tr('贝果挑卡：%s，共点开 %s 格，没有找到「%s」的门禁卡'), reason, self.opened, self.room_name)
         if self.counted:
             return self._fail(f'清点到 {self.counted} 张却没挑到')
         return self._finish(self.round_fail(self.STATUS_NO_CARD))
@@ -659,7 +660,7 @@ class BagelPickKeycard(BagelOperation):
         title = self._ocr(TOOLTIP_TITLE_RECT)
         kind = self._ocr(TOOLTIP_TYPE_RECT)
         matched = title_matches(title, self.room_name) and '门禁' in kind
-        log.info('贝果挑卡：第 %s 页格 %s 相似度 %.3f，浮窗「%s」「%s」%s',
+        log.info(tr('贝果挑卡：第 %s 页格 %s 相似度 %.3f，浮窗「%s」「%s」%s'),
                  self.page + 1, cell.center.tuple(), cell.score, title, kind, '，就是它' if matched else '')
         if not matched:
             return self.round_wait('不是目标卡，看下一格', wait=0.05)
@@ -673,7 +674,7 @@ class BagelPickKeycard(BagelOperation):
     def _check_placed(self) -> OperationRoundResult:
         occupied = safe_occupied_indices(self.last_screenshot)
         if occupied:
-            log.info('贝果挑卡：「%s」的门禁卡已放入安全箱，共点开 %s 格', self.room_name, self.opened)
+            log.info(tr('贝果挑卡：「%s」的门禁卡已放入安全箱，共点开 %s 格'), self.room_name, self.opened)
             return self._finish(self.round_success(self.STATUS_PICKED))
         self.placing_checks = (self.placing_checks or 0) + 1
         if self.placing_checks >= PLACE_CHECKS:

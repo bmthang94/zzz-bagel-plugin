@@ -138,7 +138,7 @@ class BagelOpenCompendium(BagelOperation):
         else:
             status = '未识别到快捷手册或大世界手册按钮'
         if self.operation_usage_time >= OPEN_COMBAT_SECONDS:
-            return self.round_fail(f'{status}，停止并保留现场')
+            return self.round_fail('{v0}，停止并保留现场'.format(v0=status))
         return self.round_wait(status, wait=0.5)
 
     @node_from(from_name='打开快捷手册作战页')
