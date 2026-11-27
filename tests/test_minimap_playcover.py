@@ -75,12 +75,16 @@ def test_spawn_heading_points_north(minimap_rect: Rect, fixture_name: str) -> No
     assert sector is not None and 85 <= sector <= 105
 
 
-def test_deep_site_timeout_heading(minimap_rect: Rect) -> None:
-    path = REPO_DIR / 'docs/materials/minimap_heading/playcover/deep_site_timeout.webp'
+@pytest.mark.parametrize(('name', 'low', 'high'), [
+    ('deep_site_timeout.webp', 65, 100),
+    ('deep_site_wall.webp', 80, 100),
+])
+def test_deep_site_timeout_heading(minimap_rect: Rect, name: str, low: int, high: int) -> None:
+    path = REPO_DIR / 'docs/materials/minimap_heading/playcover' / name
     frame = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
     rect = Rect(minimap_rect.x1 - 1400, minimap_rect.y1 - 120,
                 minimap_rect.x2 - 1400, minimap_rect.y2 - 120)
     crop = crop_minimap(frame, rect)
     assert crop is not None
     sector = analyze(crop)[2]
-    assert sector is not None and 65 <= sector <= 100
+    assert sector is not None and low <= sector <= high
