@@ -24,6 +24,7 @@
 | 贝果-入场确认 | [enter_confirm_no_team_equip.webp](enter_confirm_no_team_equip.webp) | 「未穿戴队伍装备（异体刃、抗蚀器），是否直接出战？」 | [入场提示](../../entry.md#入场提示) |
 | 贝果-入场确认 | [enter_investment_zero.webp](enter_investment_zero.webp) | 高危投资页，投资金额 0 | [投资金额归零](../../entry.md#投资金额归零) |
 | 贝果-局内 | [hud_spawn.webp](hud_spawn.webp) | 刚入场：计时 25:00，调查收益 0 | [出生识别与导航](../../navigation.md#出生识别与导航) |
+| 贝果-局内 | [playcover_hud_spawn.webp](playcover_hud_spawn.webp) | PlayCover 实机帧：局内 HUD，计时 23:50.99，右下普通攻击、闪避等触屏按钮，左上任务「消灭猎犬·乌利迪姆2次 0/2」；UID 已遮挡 | [出生识别与导航](../../navigation.md#出生识别与导航) |
 | 贝果-局内 | [hud_big_map.webp](hud_big_map.webp) | 局内大地图，左上「可提前进入探索」，开局倒计时 00:40 | [出生识别与导航](../../navigation.md#出生识别与导航) |
 | 贝果-局内 | [hud_interact_weapon_box.webp](hud_interact_weapon_box.webp) | 靠近武备箱，右侧交互条目「武备箱」；调查收益 33K | [容器交互与解锁](../../container.md#容器交互与解锁) |
 | 贝果-局内 | [search_weapon_box.webp](search_weapon_box.webp) | 武备箱搜查面板，产出价值 31500，右下「全部拾取」 | [搜查面板可操作性](../../container.md#搜查面板可操作性) |
@@ -32,6 +33,7 @@
 | 贝果-局内 | [hud_backpack.webp](hud_backpack.webp) | 局内按 B 打开的背包页：背包 4/20（S、A 材料各 2 件），安全箱 5 格全空，左下「R 整理」。无损，单独采集，不属于上述那次运行 | [退出前整理背包](../../settle.md#退出前整理背包) |
 | 贝果-局内 | [pause_menu.webp](pause_menu.webp) | 暂停菜单「战况」页，底栏脱离卡死、暂离、退出 | [退出与结算提示](../../settle.md#退出与结算提示) |
 | 贝果-退出确认 | [exit_confirm.webp](exit_confirm.webp) | 「是否确认退出战斗？」，副文说明退出后仅保留安全箱内物资 | [退出与结算提示](../../settle.md#退出与结算提示) |
+| 贝果-局内 | [playcover_spawn_janus_hr.webp](playcover_spawn_janus_hr.webp) | PlayCover 实机帧：六昏街南站出生点，小地图椭圆（横纵半径约 112×126），计时 23:5x；UID 已遮挡 | [出生识别与导航](../../navigation.md#出生识别与导航) |
 | 贝果-结算 | [result_exit_empty.webp](result_exit_empty.webp) | 非支持出生点主动退出：标题 DEFEAT，收益 0，时长 00:00:02 | [退出与结算提示](../../settle.md#退出与结算提示) |
 | 贝果-结算 | [result_exit_with_safe.webp](result_exit_with_safe.webp) | 采集后主动退出：标题仍是 DEFEAT，收益 245000，撤离点「无」，时长 00:00:56 | [退出与结算提示](../../settle.md#退出与结算提示) |
 | 贝果-仓库 | [warehouse_after_settle.webp](warehouse_after_settle.webp) | 结算后仓库：撤离奖励 1 件，安全箱 5 件，仓库 221/280 | [入仓核验](../../settle.md#入仓核验) |

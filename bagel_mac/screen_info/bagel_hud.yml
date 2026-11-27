@@ -19,10 +19,10 @@ area_list:
   lcs_percent: 0.9
 - area_name: 定位小地图
   pc_rect:
-  - 1533
-  - 206
-  - 1734
-  - 407
+  - 1461
+  - 158
+  - 1685
+  - 410
 - area_name: 调查收益
   pc_rect:
   - 1785

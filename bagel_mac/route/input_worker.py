@@ -23,14 +23,14 @@ import time
 from collections import deque
 from typing import TYPE_CHECKING
 
-import numpy as np
 from one_dragon.base.geometry.point import Point
-from one_dragon.utils import cal_utils, cv2_utils
+from one_dragon.utils import cal_utils
 from one_dragon.utils.log_utils import log
 
 from ..defs import INTERACT_TAP_SECONDS
 from ..i18n import tr
 from ..operation.operation import scroll_interaction_row
+from ..vision.map_locator import crop_minimap
 from ..vision.minimap_angle import analyze
 
 if TYPE_CHECKING:
@@ -1034,13 +1034,11 @@ class BagelInputWorker:
         if area is None:
             return None
         try:
-            crop = cv2_utils.crop_image_only(screen, area.pc_rect)
+            crop = crop_minimap(screen, area.pc_rect)
         except Exception:
             return None
-        if crop is None or crop.size == 0:
+        if crop is None:
             return None
-        if crop.ndim == 2:
-            crop = np.stack([crop] * 3, axis=-1)
         try:
             _marker_vertices, _marker_edges, sector, _radius, _center = analyze(crop)
         except Exception:

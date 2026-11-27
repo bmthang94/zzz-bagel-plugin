@@ -15,6 +15,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from cv2.typing import MatLike
+from one_dragon.utils import cv2_utils
 from PIL import Image
 
 from ..defs import PLUGIN_DIR
@@ -46,6 +47,35 @@ LONG_MISS_SECONDS = 1.0
 
 MIN_WINDOW_ENERGY = 1e-4
 """底图窗口方差下限。零方差窗口会返回有限的 1.0 假高分。"""
+
+
+MINIMAP_SIZE = 201
+"""定位与朝向算法统一的输入边长，与 Windows 时代的 201×201 裁剪一致。"""
+
+
+def crop_minimap(screen: MatLike, pc_rect) -> MatLike | None:
+    """裁出小地图并缩放到统一的 201×201。
+
+    PlayCover 窗口约 2:1 被拉成 1920×1080，小地图在截图里是椭圆，
+    建档区域按椭圆外接矩形裁剪后必须非均匀缩回正方形，
+    纹理比例才和底图一致（实测峰值的横纵比 112:126 = 1:1.125）。
+    Windows 的 201×201 裁剪尺寸已经一致，原样返回不缩放。
+
+    Args:
+        screen: 整屏截图，RGB。
+        pc_rect: 「定位小地图」区域。
+
+    Returns:
+        201×201 RGB 小地图；裁剪为空时为 None。
+    """
+    crop = cv2_utils.crop_image_only(screen, pc_rect)
+    if crop is None or crop.size == 0:
+        return None
+    if crop.ndim == 2:
+        crop = np.stack([crop] * 3, axis=-1)
+    if crop.shape[0] != MINIMAP_SIZE or crop.shape[1] != MINIMAP_SIZE:
+        crop = cv2.resize(crop, (MINIMAP_SIZE, MINIMAP_SIZE), interpolation=cv2.INTER_LINEAR)
+    return crop
 
 
 def high_pass(gray: MatLike, kernel: int = TEXTURE_HP_KERNEL) -> MatLike:

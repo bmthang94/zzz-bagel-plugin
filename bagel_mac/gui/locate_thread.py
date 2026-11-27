@@ -9,8 +9,6 @@ from __future__ import annotations
 from threading import Event
 from typing import TYPE_CHECKING
 
-import numpy as np
-from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
 from PySide6.QtCore import QThread, Signal
 
@@ -22,7 +20,7 @@ from ..route.route_recorder import (
     is_foreground,
     wait_foreground,
 )
-from ..vision.map_locator import MultiMapLocator, load_map_locators
+from ..vision.map_locator import MultiMapLocator, crop_minimap, load_map_locators
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -131,12 +129,7 @@ class BagelLocateThread(QThread):
         Returns:
             小地图裁剪；裁剪失败时返回 None。
         """
-        crop = cv2_utils.crop_image_only(screenshot, rect)
-        if crop is None or crop.size == 0:
-            return None
-        if crop.ndim == 2:
-            crop = np.stack([crop] * 3, axis=-1)
-        return crop
+        return crop_minimap(screenshot, rect)
 
 
 class BagelTrackThread(QThread):

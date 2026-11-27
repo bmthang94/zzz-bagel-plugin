@@ -24,7 +24,6 @@ import time
 from math import atan2, cos, degrees, hypot, radians, sin
 from typing import TYPE_CHECKING
 
-import numpy as np
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResultEnum
@@ -48,6 +47,7 @@ from ..stats import (
 )
 from ..vision.map_locator import (
     MultiMapLocator,
+    crop_minimap,
     load_map_locators,
 )
 from ..vision.minimap_angle import analyze
@@ -840,11 +840,9 @@ class BagelRouteWalker(BagelOperation):
         area = self.ctx.screen_loader.get_area('贝果-局内', '定位小地图')
         if area is None:
             raise ValueError(tr('缺少贝果定位小地图区域'))
-        crop = cv2_utils.crop_image_only(self.last_screenshot, area.pc_rect)
-        if crop is None or crop.size == 0:
+        crop = crop_minimap(self.last_screenshot, area.pc_rect)
+        if crop is None:
             raise ValueError(tr('小地图裁剪为空'))
-        if crop.ndim == 2:
-            crop = np.stack([crop] * 3, axis=-1)
         return crop
 
     def locate(self) -> tuple[float, float] | None:

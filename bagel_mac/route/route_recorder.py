@@ -21,11 +21,10 @@ from threading import Event
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
 from pynput import keyboard
 
-from ..vision.map_locator import MultiMapLocator, load_map_locators
+from ..vision.map_locator import MultiMapLocator, crop_minimap, load_map_locators
 from ..vision.minimap_angle import analyze
 from .route_model import (
     BEACON,
@@ -457,12 +456,7 @@ class BagelPointRecorder:
         Returns:
             小地图裁剪；裁剪失败时返回 None。
         """
-        crop = cv2_utils.crop_image_only(screenshot, rect)
-        if crop is None or crop.size == 0:
-            return None
-        if crop.ndim == 2:
-            crop = np.stack([crop] * 3, axis=-1)
-        return crop
+        return crop_minimap(screenshot, rect)
 
     def _locate(self, crop: MatLike) -> tuple[Any, float, tuple[int, int]] | None:
         """在裁剪出的小地图上定位，失败返回 None。
