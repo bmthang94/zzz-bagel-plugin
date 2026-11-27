@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import math
+import sys
 import threading
 import time
 from collections import deque
@@ -32,6 +33,7 @@ from ..i18n import tr
 from ..operation.operation import scroll_interaction_row
 from ..vision.map_locator import crop_minimap
 from ..vision.minimap_angle import analyze
+from .playcover_turn import flick_camera
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -277,10 +279,12 @@ class _TurnWorker:
     """
 
     def __init__(
-        self, handler: Callable[[float], None],
+        self, handler: Callable[[float], bool],
         sampler: Callable[[], float | None],
         initial_ratio: float = 1.0,
         trust_initial_ratio: bool = False,
+        *,
+        stationary_token: Callable[[], tuple[int, int] | None] | None = None,
     ) -> None:
         """
         Args:
@@ -290,9 +294,11 @@ class _TurnWorker:
                 只决定第一个有效样本之前怎么换算，之后照常按本局样本学习。
             trust_initial_ratio: 起步校准值是否来自上一局的有效记忆；为 True 时开局即放开
                 45 度热身上限，不必等本局攒满 3 个样本。
+            stationary_token: 转向前后无路线移动时保持不变的标记。
         """
-        self._handler: Callable[[float], None] = handler
+        self._handler: Callable[[float], bool] = handler
         self._sampler: Callable[[], float | None] = sampler
+        self._stationary_token: Callable[[], tuple[int, int] | None] | None = stationary_token
         self._trust_initial_ratio: bool = trust_initial_ratio
         """起步值是否来自跨局有效记忆。"""
         self._target: float | None = None
@@ -311,6 +317,8 @@ class _TurnWorker:
         """上次真正下发的转角，等转稳后用来算校准样本。"""
         self._pending_chunks: int = 1
         """上次转向实际拆成的段数，用于校准日志区分单段与分段样本。"""
+        self._pending_token: tuple[int, int] | None = None
+        """转向前采集朝向时的移动标记。"""
         self._pending_at: float = 0.0
         """上次下发的时刻；宽限内画面没变化不计数。"""
         self._still_since: float | None = None
@@ -373,6 +381,7 @@ class _TurnWorker:
             self._pending = None
             self._pending_chunks = 1
             self._anchor = None
+            self._pending_token = None
             self._history.clear()
             self._target = None
             self._still_since = None
@@ -416,6 +425,7 @@ class _TurnWorker:
                 # 下发后静默期内不截图：这段的样本本来就丢掉，采了也是浪费。
                 continue
             try:
+                sample_token = self._stationary_token() if self._stationary_token is not None else None
                 current = self._sampler()
             except Exception:
                 log.error(tr('贝果转向采样朝向失败'), exc_info=True)
@@ -487,6 +497,7 @@ class _TurnWorker:
                 self._pending_chunks = chunks
                 self._pending_at = time.monotonic()
                 self._anchor = stable_angle
+                self._pending_token = sample_token
                 self._history.clear()
             self._dispatch_turn(actual, chunks)
 
@@ -507,21 +518,26 @@ class _TurnWorker:
                 time.sleep(TURN_CHUNK_INTERVAL)
                 with self._lock:
                     if self._stopping or self._target is None:
-                        self._pending = sent if sent else None
-                        self._pending_chunks = sent_chunks if sent else 1
-                        self._pending_at = time.monotonic()
-                        return
+                        break
             try:
-                self._handler(part)
+                if not self._handler(part):
+                    break
                 sent += part
                 sent_chunks += 1
             except Exception:
                 log.error(tr('贝果转向执行失败'), exc_info=True)
                 break
         with self._lock:
-            self._pending = sent if sent else None
-            self._pending_chunks = sent_chunks if sent else 1
-            self._pending_at = time.monotonic()
+            if sent_chunks == chunks and not self._stopping:
+                self._pending = sent
+                self._pending_chunks = sent_chunks
+                self._pending_at = time.monotonic()
+            else:
+                self._pending = None
+                self._anchor = None
+                self._pending_chunks = 1
+                self._pending_token = None
+                self._still_since = None
 
     def _learn(self, anchor: float, pending: float, stable: float) -> bool:
         """用转稳后的角度反推上一笔的真实比例；画面还没跟上时返回 False 等下一轮。
@@ -534,6 +550,17 @@ class _TurnWorker:
         Returns:
             样本已消费（不管有效无效）时返回 True，还要继续等时返回 False。
         """
+        if self._stationary_token is not None and (
+            self._pending_token is None or self._stationary_token() != self._pending_token
+        ):
+            with self._lock:
+                self._pending = None
+                self._anchor = None
+                self._pending_chunks = 1
+                self._pending_token = None
+                self._still_since = None
+            log.debug(tr('贝果转向校准样本丢弃：触点忙碌或采样期间发生路线移动'))
+            return True
         delta = cal_utils.angle_delta(anchor, stable)
         if abs(pending) < TURN_SCALE_SAMPLE_MIN_COMMAND:
             # 小幅度微调不参与校准：画面已有变化（>=0.5 度）或已满 0.4 秒宽限才放行，
@@ -547,7 +574,9 @@ class _TurnWorker:
                 self._pending = None
                 self._pending_chunks = 1
                 self._anchor = None
+                self._pending_token = None
                 self._still_since = None
+            log.info(tr('贝果转向微调测量：名义 %.1f 实际 %.1f'), pending, delta)
             return True
         if abs(delta) < TURN_RATIO_MIN_DELTA:
             now = time.monotonic()
@@ -564,7 +593,9 @@ class _TurnWorker:
                     self._pending = None
                     self._pending_chunks = 1
                     self._anchor = None
+                    self._pending_token = None
                     self._still_since = None
+                    log.info(tr('贝果转向测量：名义 %.1f 实际 %.1f，换大目标放行'), pending, delta)
                     return True
                 if self._still_since is None:
                     # 宽限过后第一次看到没动，开始计时。
@@ -576,6 +607,7 @@ class _TurnWorker:
                 self._pending = None
                 self._pending_chunks = 1
                 self._anchor = None
+                self._pending_token = None
                 self._still_since = None
             log.info(
                 tr('贝果转向校准画面 %.1fs 没变化，放行下一笔（校准保持 %.3f）'),
@@ -587,11 +619,14 @@ class _TurnWorker:
             self._pending = None
             self._pending_chunks = 1
             self._anchor = None
+            self._pending_token = None
             self._still_since = None
         if abs(delta) < TURN_RATIO_MIN_ANGLE:
             # 小样本直接丢弃，不计数、不重置。
+            log.info(tr('贝果转向测量丢弃，幅度过小：名义 %.1f 实际 %.1f'), pending, delta)
             return True
         if delta * pending <= 0:
+            log.info(tr('贝果转向测量丢弃，方向相反：名义 %.1f 实际 %.1f'), pending, delta)
             return True
         sample = abs(delta) / abs(pending)
         if chunks > 1:
@@ -728,11 +763,19 @@ class BagelInputWorker:
         self._mouse_lock: threading.Lock = threading.Lock()
         """转向与滚轮共用的鼠标输入锁。"""
         self._turn_enabled: bool = False
+        self._sample_none_streak: int = 0
+        """转向采样连续读不到朝向的次数；恢复时归零。"""
+        self._playcover_dodges: int = 0
 
         self._turn_worker: _TurnWorker = _TurnWorker(
             self._run_turn, self._sample_angle,
             initial_ratio=initial_turn_ratio,
             trust_initial_ratio=trust_initial_ratio,
+            stationary_token=(
+                self._stationary_token
+                if sys.platform == 'darwin' and getattr(ctx.controller, 'touch_ui_enabled', False)
+                else None
+            ),
         )
         self._instant_channel: _InstantChannel = _InstantChannel(
             'bagel-instant', self._run_instant,
@@ -1020,40 +1063,81 @@ class BagelInputWorker:
 
         用独立截图，不干扰主线截图策略；裁剪与识别与主线同区域同函数。
         异常只返回 None，由调用方清空历史，不抛出去杀线程。
+        连续读不到时按原因告警，起头一次、之后每 10 次一条，恢复时补一条收尾。
         """
+        sector: float | None = None
+        reason: str | None = None
+        screen = None
         try:
             screen = self.ctx.controller.get_screenshot(independent=True)
         except Exception:
-            return None
-        if screen is None:
-            return None
-        try:
-            area = self.ctx.screen_loader.get_area('贝果-局内', '定位小地图')
-        except Exception:
-            return None
-        if area is None:
-            return None
-        try:
-            crop = crop_minimap(screen, area.pc_rect)
-        except Exception:
-            return None
-        if crop is None:
-            return None
-        try:
-            _marker_vertices, _marker_edges, sector, _radius, _center = analyze(crop)
-        except Exception:
-            return None
-        return sector
+            reason = tr('截图异常')
+        if reason is None:
+            if screen is None:
+                reason = tr('截图为空')
+        crop = None
+        if reason is None:
+            try:
+                area = self.ctx.screen_loader.get_area('贝果-局内', '定位小地图')
+                if area is not None:
+                    crop = crop_minimap(screen, area.pc_rect)
+            except Exception:
+                crop = None
+            if crop is None:
+                reason = tr('小地图裁剪为空')
+        if reason is None:
+            try:
+                _marker_vertices, _marker_edges, sector, _radius, _center = analyze(crop)
+            except Exception:
+                reason = tr('朝向识别异常')
+            else:
+                if sector is None:
+                    reason = tr('朝向缺失')
+        if sector is not None:
+            if self._sample_none_streak > 0:
+                log.info(tr('贝果转向采样恢复，此前连续 %s 次读不到朝向'), self._sample_none_streak)
+                self._sample_none_streak = 0
+            return sector
+        self._sample_none_streak += 1
+        if self._sample_none_streak == 1:
+            log.warning(tr('贝果转向采样读不到朝向（%s）'), reason)
+        elif self._sample_none_streak % 10 == 0:
+            log.warning(tr('贝果转向采样连续 %s 次读不到朝向（%s）'), self._sample_none_streak, reason)
+        return None
 
-    def _run_turn(self, angle: float) -> None:
+    def _stationary_token(self) -> tuple[int, int] | None:
+        """记录空闲触点的移动与闪避次数。"""
+        controller = self.ctx.controller
+        with controller._touch_lock:
+            if controller._touch_held or controller._touch_owner is not None:
+                return None
+            return controller._touch_generation, self._playcover_dodges
+
+    def _run_turn(self, angle: float) -> bool:
         """执行一次转向。
 
         Args:
             angle: 转向角度（度）。
         """
+        controller = self.ctx.controller
+        try:
+            distance = float(controller.game_config.turn_dx) * angle
+        except Exception:
+            distance = 0.0
+        log.info(
+            tr('贝果转向下发：角度 %.1f，距离 %.1f，开关 %s，触点按住 %s，触点占用 %s'),
+            angle, distance, self._turn_enabled,
+            getattr(controller, '_touch_held', None),
+            getattr(controller, '_touch_owner', None),
+        )
         with self._mouse_lock:
             if self._turn_enabled:
-                self.ctx.controller.turn_by_angle_diff(angle)
+                if sys.platform == 'darwin' and getattr(controller, 'touch_ui_enabled', False):
+                    return flick_camera(controller, distance)
+                else:
+                    controller.turn_by_angle_diff(angle)
+                    return True
+            return False
 
     # ---------- 即时通道 ----------
 
@@ -1109,7 +1193,12 @@ class BagelInputWorker:
         if command.kind == DODGE:
             # 冲刺是「按住前进再连点闪避」，顺序反了会变成静止闪避。
             self._ensure_forward_down()
-            controller.dodge()
+            if sys.platform == 'darwin' and getattr(controller, 'touch_ui_enabled', False):
+                with controller._touch_lock:
+                    self._playcover_dodges += 1
+                    controller.dodge()
+            else:
+                controller.dodge()
             return
         if command.kind == SIDE_STEP:
             # 侧移方向由 angle 给出：-1 向左（A），1 向右（D）。
